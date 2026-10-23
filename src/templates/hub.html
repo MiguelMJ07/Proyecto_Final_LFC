@@ -1,0 +1,59 @@
+{% extends "_layout.html" %}
+{% block title %}Home{% endblock %}
+{% block content %}
+<h1>One server for the whole course</h1>
+<p class="lede">Four stages share the same Flask server. A regular language can start as a grammar, become an NFA, a DFA and a minimal DFA; a context-free grammar gets parsed and its attributes evaluated. Each stage is an endpoint and a page.</p>
+
+<div class="derive" aria-label="A derivation">
+  S &rArr; A B &rArr; <span class="m">a</span> A B &rArr; a <span class="m">d</span> B &rArr; a d <span class="m">b</span> B <span class="m">c</span> &rArr; a d b c
+  <div class="muted" style="font:13px var(--sans)">A leftmost derivation of <code>adbc</code> in the grammar S → AB, A → aA | d, B → bBc | e. The marked terminals are the ones each step produces.</div>
+</div>
+
+<div class="pipeline">
+{% for s in stages %}
+  <a class="stage" href="{{ s.href }}">
+    <span class="no">{{ s.no }}</span>
+    <h2>{{ s.title }}</h2>
+    <div class="kick">{{ s.kicker }}</div>
+    <p>{{ s.text }}</p>
+    {% for e in s.endpoints %}<span class="eps">{{ e }}</span>{% endfor %}
+  </a>
+{% endfor %}
+</div>
+
+<section class="card" style="margin-top:22px">
+  <h2>Run the full chain on a regular grammar</h2>
+  <p class="muted">The grammar goes to <code>/grammar/to-nfa</code>, the NFA to <code>/convert</code> and the DFA to <code>/minimize</code>, exactly as the earlier assignments defined them.</p>
+  <label for="chainGrammar">Right-linear grammar (A → aB, A → a, A → e)</label>
+  <textarea id="chainGrammar" spellcheck="false" style="min-height:96px">2
+S -> aS bS aA
+A -> b</textarea>
+  <div class="row"><button id="chainRun">Run chain</button><span class="muted">Language: strings over {a, b} that end in ab.</span></div>
+  <div id="chainOut" style="margin-top:12px"></div>
+</section>
+{% endblock %}
+
+{% block scripts %}
+<script>
+$("#chainRun").addEventListener("click", async () => {
+  const out = $("#chainOut"); out.replaceChildren(h("span", { class: "muted" }, "Running…"));
+  const grammar = $("#chainGrammar").value;
+  const steps = [];
+  const fail = (where, r) => out.replaceChildren(h("div", { class: "err" }, `${where}: ${r.data.error || "failed"}`));
+  const nfa = await api("/grammar/to-nfa", { grammar });
+  if (!nfa.ok) return fail("Grammar → NFA", nfa);
+  steps.push(["Grammar → NFA", `${nfa.data.states.length} states, ${nfa.data.transitions.length} transitions`, "/grammar/to-nfa"]);
+  const dfa = await api("/convert", nfa.data);
+  if (!dfa.ok) return fail("NFA → DFA", dfa);
+  steps.push(["NFA → DFA", `${dfa.data.dfaStates.length} states (subset construction)`, "/convert"]);
+  const min = await api("/minimize", dfa.data);
+  if (!min.ok) return fail("Minimization", min);
+  const c = min.data.cases[0];
+  steps.push(["Minimal DFA", `${c.stats.statesMinimized} states; equivalent pairs: ${c.output || "none"}`, "/minimize"]);
+  const tbl = h("table", { class: "data" }, h("tr", {}, h("th", {}, "Stage"), h("th", {}, "Result"), h("th", {}, "Endpoint")),
+    steps.map(s => h("tr", {}, h("td", { class: "left" }, s[0]), h("td", { class: "left" }, s[1]), h("td", { class: "left" }, h("code", {}, s[2])))));
+  const open = h("button", { class: "ghost", onclick: () => { try { localStorage.setItem("fl.nfa", JSON.stringify(nfa.data)); } catch (_) {} location.href = "/minimize/ui#nfa"; } }, "Open this NFA in the minimizer page");
+  out.replaceChildren(h("div", { class: "scroll" }, tbl), h("div", { class: "row" }, open));
+});
+</script>
+{% endblock %}

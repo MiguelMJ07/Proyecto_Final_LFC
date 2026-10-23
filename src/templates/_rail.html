@@ -1,0 +1,11 @@
+<aside class="rail">
+  <a class="brand" href="/">Formal Languages<small>Automata · grammars · compilers</small></a>
+  <nav aria-label="Stages">
+    <a href="/minimize/ui#nfa" {% if request.path == '/convert/ui' %}aria-current="page"{% endif %}><span class="n">1</span><span>NFA → DFA<small>/convert, /simulate</small></span></a>
+    <a href="/minimize/ui" {% if request.path == '/minimize/ui' %}aria-current="page"{% endif %}><span class="n">2</span><span>DFA minimization<small>/minimize</small></span></a>
+    <a href="/grammar/ui" {% if request.path == '/grammar/ui' %}aria-current="page"{% endif %}><span class="n">3</span><span>Grammars &amp; parsers<small>/grammar/*</small></span></a>
+    <a href="/sdd/ui" {% if request.path == '/sdd/ui' %}aria-current="page"{% endif %}><span class="n">4</span><span>Syntax-directed defs<small>/sdd/*</small></span></a>
+  </nav>
+  <div class="status"><span class="dot" id="serverDot"></span><span id="serverText">Checking server…</span></div>
+  <div class="links"><a href="/api">API index</a><a href="/health">Health</a></div>
+</aside>

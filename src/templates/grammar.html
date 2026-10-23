@@ -1,0 +1,255 @@
+{% extends "_layout.html" %}
+{% block title %}Grammars and parsers{% endblock %}
+{% block content %}
+<h1>Grammars and parsers</h1>
+<p class="lede">Enter a context-free grammar in the course format (first line: number of nonterminals; then one line per nonterminal; <code>e</code> is ε, <code>S</code> is the start symbol). The server computes FIRST and FOLLOW, decides LL(1) and SLR(1), and parses your strings. The grammar is never transformed before the checks.</p>
+
+<section class="card">
+  <div class="grid2">
+    <div>
+      <label for="gram">Grammar</label>
+      <textarea id="gram" spellcheck="false"></textarea>
+      <div class="row">
+        <select id="example" aria-label="Example grammars"></select>
+        <button id="analyze">Analyze grammar</button>
+        <span id="gstatus" class="muted"></span>
+      </div>
+    </div>
+    <div>
+      <h3 style="margin-top:0">Decision (Section 2.2.2 of the assignment)</h3>
+      <div id="verdict" class="muted">Run the analysis to see whether the grammar is LL(1), SLR(1), both or neither.</div>
+      <div id="prods" class="scroll"></div>
+    </div>
+  </div>
+</section>
+
+<section id="results" hidden>
+  <div class="tabs" role="tablist">
+    <button data-tab="sets">FIRST and FOLLOW</button>
+    <button data-tab="ll1">LL(1) table</button>
+    <button data-tab="slr1">SLR(1) automaton and tables</button>
+    <button data-tab="parse">Parse strings</button>
+    <button data-tab="nfa">Regular grammar → NFA</button>
+  </div>
+
+  <section data-panel="sets" class="card">
+    <h2>FIRST and FOLLOW</h2>
+    <p class="muted">Section 4.4.2. Sets are listed as the program prints them with <code>--sets</code>: terminals in ASCII order, then <code>e</code>, then <code>$</code>.</p>
+    <div id="setsTable" class="scroll"></div>
+    <details><summary>Fixed-point iteration (which rule added what)</summary><pre id="setsTrace"></pre></details>
+  </section>
+
+  <section data-panel="ll1" class="card">
+    <h2>LL(1)</h2>
+    <p class="muted">The test of Section 4.4.3 is applied to every pair of productions of the same nonterminal; the table is built with Algorithm 4.31.</p>
+    <div id="ll1Out"></div>
+  </section>
+
+  <section data-panel="slr1" class="card">
+    <h2>SLR(1)</h2>
+    <p class="muted">The grammar is augmented with S' → S. States are the canonical collection of LR(0) item sets; reduce actions use FOLLOW.</p>
+    <div id="slrOut"></div>
+  </section>
+
+  <section data-panel="parse" class="card">
+    <h2>Parse strings</h2>
+    <div class="grid2">
+      <div>
+        <label for="strs">Strings, one per line (write <code>e</code> for the empty string)</label>
+        <textarea id="strs" spellcheck="false" style="min-height:110px"></textarea>
+        <div class="row">
+          <select id="which" aria-label="Parser"><option value="auto">Parser: automatic</option><option value="ll1">LL(1) (Algorithm 4.34)</option><option value="slr1">SLR(1) (LR algorithm)</option></select>
+          <button id="parseBtn">Parse</button>
+        </div>
+      </div>
+      <div><h3 style="margin-top:0">Answers</h3><div id="answers" class="muted">No strings parsed yet.</div></div>
+    </div>
+    <div id="detail" hidden>
+      <h3>Step by step: <span id="detailName" class="mono"></span></h3>
+      <div id="player"></div>
+      <h3>Parse tree</h3>
+      <div id="treeBox" class="graph"></div>
+    </div>
+  </section>
+
+  <section data-panel="nfa" class="card">
+    <h2>Regular grammar → NFA</h2>
+    <p class="muted">If every production has the form A → aB, A → a or A → e, the grammar is regular. The construction gives an NFA in the format of <code>/convert</code>, so it continues into the earlier assignments.</p>
+    <div class="row"><button id="toNfa">Build the NFA</button><span id="nfaMsg"></span></div>
+    <pre id="nfaJson" hidden style="margin-top:10px"></pre>
+    <div class="row"><button id="toMin" class="ghost" hidden>Convert to DFA and minimize</button></div>
+  </section>
+</section>
+{% endblock %}
+
+{% block scripts %}
+<script>
+const EXAMPLES = {{ examples | tojson }};
+let lastNfa = null, lastAnalysis = null;
+const sel = $("#example");
+EXAMPLES.forEach((e, i) => sel.append(h("option", { value: i }, e.name)));
+function loadExample(i) { $("#gram").value = EXAMPLES[i].grammar; $("#strs").value = EXAMPLES[i].inputs.join("\n"); }
+sel.addEventListener("change", () => { loadExample(sel.value); analyze(); });
+loadExample(0);
+initTabs();
+
+const fmtSet = a => "{" + a.join(", ") + "}";
+const short = t => t.replace(/ -> /, " → ").replace(/ e$/, " ε");
+
+async function analyze() {
+  $("#gstatus").textContent = "Analyzing…";
+  const r = await api("/grammar/analyze", { grammar: $("#gram").value });
+  $("#gstatus").textContent = "";
+  if (!r.ok) {
+    $("#results").hidden = true;
+    $("#verdict").replaceChildren(h("div", { class: "err" }, r.data.error + (r.data.line ? `\n(line ${r.data.line})` : "")));
+    $("#prods").replaceChildren();
+    return;
+  }
+  const d = lastAnalysis = r.data;
+  $("#results").hidden = false;
+  $("#verdict").replaceChildren(
+    h("div", { class: "verdict" },
+      h("span", { class: "pill " + (d.isLL1 ? "yes" : "no") }, d.isLL1 ? "LL(1)" : "not LL(1)"),
+      h("span", { class: "pill " + (d.isSLR1 ? "yes" : "no") }, d.isSLR1 ? "SLR(1)" : "not SLR(1)")),
+    h("div", {}, "Program output: ", h("code", {}, d.message)),
+    d.leftRecursive.length ? h("div", { class: "muted", style: "margin-top:6px" }, `Left-recursive: ${d.leftRecursive.join(", ")}. A left-recursive grammar can never be LL(1).`) : "");
+  $("#prods").replaceChildren(h("table", { class: "data", style: "margin-top:8px" },
+    h("tr", {}, h("th", {}, "#"), h("th", {}, "Production")),
+    d.productions.map(p => h("tr", {}, h("td", {}, p.index), h("td", { class: "left" }, short(p.text))))));
+  renderSets(d.sets, d.nonterminals || Object.keys(d.sets.first));
+  renderLL1(d);
+  renderSLR(d);
+  $("#which").value = "auto";
+}
+
+function renderSets(s, nts) {
+  $("#setsTable").replaceChildren(h("table", { class: "data" },
+    h("tr", {}, h("th", {}, "Nonterminal"), h("th", {}, "FIRST"), h("th", {}, "FOLLOW")),
+    nts.map(A => h("tr", {}, h("td", {}, A), h("td", { class: "left" }, fmtSet(s.first[A])), h("td", { class: "left" }, fmtSet(s.follow[A]))))));
+  const f = s.steps.first.map(e => `round ${e.round}: FIRST(${e.symbol}) += ${fmtSet(e.added)}   rule ${e.rule}, from ${e.production}`);
+  const w = s.steps.follow.map(e => `round ${e.round}: FOLLOW(${e.symbol}) += ${fmtSet(e.added)}   rule ${e.rule}${e.production ? ", from " + e.production : " ($ in FOLLOW of the start symbol)"}`);
+  $("#setsTrace").textContent = f.concat([""], w).join("\n");
+}
+
+function renderLL1(d) {
+  const L = d.ll1, box = $("#ll1Out"); box.replaceChildren();
+  box.append(h("div", { class: "verdict" }, h("span", { class: "pill " + (d.isLL1 ? "yes" : "no") }, d.isLL1 ? "The grammar is LL(1)" : "The grammar is not LL(1)")));
+  if (L.violations.length) {
+    box.append(h("table", { class: "rules" }, h("tr", {}, h("th", {}, "Condition"), h("th", {}, "Productions"), h("th", {}, "Why")),
+      L.violations.map(v => h("tr", {}, h("td", {}, v.condition), h("td", { class: "mono" }, v.productions.map(short).join("   |   ")), h("td", {}, v.message)))));
+  }
+  const conflictKeys = new Set(L.tableConflicts.map(c => c.nonterminal + "," + c.symbol));
+  const t = L.table;
+  box.append(h("h3", {}, "Predictive parsing table M"), h("div", { class: "scroll" }, h("table", { class: "data" },
+    h("tr", {}, h("th", {}, "M"), t.columns.map(c => h("th", {}, c))),
+    t.rows.map(r => h("tr", {}, h("th", {}, r.nonterminal), t.columns.map(c => {
+      const cell = r.cells[c];
+      return h("td", { class: conflictKeys.has(r.nonterminal + "," + c) ? "conflict" : (cell ? "hit" : "") },
+               cell ? cell.map(x => short(x.text)).join(" ; ") : "");
+    }))))));
+  if (L.tableConflicts.length) box.append(h("p", { class: "legend" }, "Red cells have more than one production: the table is multiply defined."));
+}
+
+function actText(a) {
+  return a.replace(/^shift (\d+)$/, "s$1").replace(/^reduce (.+)$/, (_, p) => "r " + short(p)).replace("accept", "acc");
+}
+async function renderSLR(d) {
+  const S = d.slr1, box = $("#slrOut"); box.replaceChildren();
+  box.append(h("div", { class: "verdict" }, h("span", { class: "pill " + (d.isSLR1 ? "yes" : "no") }, d.isSLR1 ? "The grammar is SLR(1)" : "The grammar is not SLR(1)"),
+    h("span", { class: "muted" }, `${S.numStates} LR(0) states`)));
+  if (S.tooBig) { box.append(h("div", { class: "err" }, "The automaton is too large to build here.")); return; }
+  if (S.conflicts.length) box.append(h("table", { class: "rules" }, h("tr", {}, h("th", {}, "State"), h("th", {}, "On"), h("th", {}, "Conflict"), h("th", {}, "Actions")),
+    S.conflicts.map(c => h("tr", {}, h("td", {}, c.state), h("td", { class: "mono" }, c.symbol), h("td", {}, c.type), h("td", { class: "mono" }, c.actions.map(short).join("   |   "))))));
+  const bad = new Set(S.conflicts.map(c => c.state + "," + c.symbol));
+  const t = S.table;
+  box.append(h("h3", {}, "ACTION and GOTO"), h("div", { class: "scroll" }, h("table", { class: "data" },
+    h("tr", {}, h("th", { rowspan: 2 }, "State"), h("th", { colspan: t.terminals.length }, "ACTION"), h("th", { colspan: t.nonterminals.length }, "GOTO")),
+    h("tr", {}, t.terminals.map(c => h("th", {}, c)), t.nonterminals.map(c => h("th", {}, c))),
+    t.rows.map(r => h("tr", {}, h("th", {}, r.state),
+      t.terminals.map(c => { const a = r.action[c]; return h("td", { class: bad.has(r.state + "," + c) ? "conflict" : (a ? "hit" : "") }, a ? a.map(actText).join(" / ") : ""); }),
+      t.nonterminals.map(c => h("td", {}, r.goto[c] !== undefined ? r.goto[c] : "")))))));
+  const g = h("div", { class: "graph" }); const det = h("details", {}, h("summary", {}, "LR(0) automaton (graph)"), g);
+  det.addEventListener("toggle", () => { if (det.open && !g.firstChild) drawDot(g, S.dot); });
+  box.append(det);
+  const items = h("details", {}, h("summary", {}, "Items of each state"), h("pre", {}, S.automaton.states.map(s => `I${s.id}\n` + s.items.map(i => "   " + i).join("\n")).join("\n\n")));
+  box.append(items);
+}
+
+$("#analyze").addEventListener("click", analyze);
+
+// ---------------- parse + step player ----------------
+let lastParse = null;
+$("#parseBtn").addEventListener("click", async () => {
+  const inputs = $("#strs").value.split("\n").map(s => s.trim()).filter(s => s !== "");
+  const r = await api("/grammar/parse", { grammar: $("#gram").value, inputs, parser: $("#which").value, trace: true });
+  const box = $("#answers"); $("#detail").hidden = true;
+  if (!r.ok) { box.replaceChildren(h("div", { class: "err" }, r.data.error)); return; }
+  if (!r.data.results.length) { box.replaceChildren(h("div", { class: "bad" }, r.data.message)); return; }
+  lastParse = r.data;
+  box.replaceChildren(h("div", { class: "muted" }, `Parser: ${r.data.parser === "ll1" ? "LL(1)" : "SLR(1)"}`),
+    h("table", { class: "data", style: "margin-top:6px" }, h("tr", {}, h("th", {}, "String"), h("th", {}, "Answer"), h("th", {}, "")),
+      r.data.results.map((x, i) => h("tr", {}, h("td", { class: "left" }, x.input), h("td", { class: x.accepted ? "ok" : "bad" }, x.answer),
+        h("td", {}, h("button", { class: "ghost", onclick: () => showDetail(i) }, "Steps"))))));
+  showDetail(0);
+});
+
+function showDetail(i) {
+  const x = lastParse.results[i];
+  $("#detail").hidden = false; $("#detailName").textContent = x.input === "" ? "ε" : x.input;
+  makePlayer($("#player"), x, lastParse.parser);
+  const tb = $("#treeBox");
+  if (x.accepted) drawDot(tb, treeToDot(x.tree)); else tb.replaceChildren(h("div", { class: "err" }, x.error ? x.error.message : "Rejected."));
+}
+
+function makePlayer(root, x, kind) {
+  const tr = x.trace, full = (x.input.trim() === "e" ? "" : x.input.trim()) + "$";
+  let i = 0, timer = null;
+  const stackBox = h("div", { class: "tape" }), inBox = h("div", { class: "tape" }), act = h("div", { class: "action" });
+  const slider = h("input", { type: "range", min: 0, max: tr.length - 1, value: 0, "aria-label": "Step" });
+  const lab = h("span", { class: "muted" });
+  const prev = h("button", { class: "ghost" }, "Back"), next = h("button", {}, "Next"), play = h("button", { class: "ghost" }, "Play");
+  function draw() {
+    const s = tr[i];
+    stackBox.replaceChildren();
+    if (kind === "ll1") {
+      s.stack.forEach((sym, k) => stackBox.append(h("span", { class: "cell" + (k === 0 ? " top" : "") }, sym)));
+      stackBox.append(h("span", { class: "cell" }, "$"));
+    } else {
+      s.stack.forEach((e, k) => {
+        if (e.symbol) stackBox.append(h("span", { class: "cell" }, e.symbol));
+        stackBox.append(h("span", { class: "cell state" + (k === s.stack.length - 1 ? " top" : "") }, e.state));
+      });
+    }
+    inBox.replaceChildren();
+    const consumed = full.length - s.input.length;
+    [...full].forEach((c, k) => inBox.append(h("span", { class: "cell" + (k < consumed ? " done" : k === consumed ? " next" : "") }, c)));
+    act.className = "action" + (s.action === "accept" ? " accept" : s.action === "error" ? " error" : "");
+    act.textContent = s.action;
+    slider.value = i; lab.textContent = `Step ${i + 1} of ${tr.length}`;
+    prev.disabled = i === 0; next.disabled = i === tr.length - 1;
+  }
+  const go = k => { i = Math.max(0, Math.min(tr.length - 1, k)); draw(); };
+  const stop = () => { clearInterval(timer); timer = null; play.textContent = "Play"; };
+  prev.onclick = () => { stop(); go(i - 1); }; next.onclick = () => { stop(); go(i + 1); };
+  slider.oninput = () => { stop(); go(+slider.value); };
+  play.onclick = () => { if (timer) return stop(); play.textContent = "Pause"; timer = setInterval(() => { if (i >= tr.length - 1) return stop(); go(i + 1); }, 650); };
+  root.replaceChildren(
+    h("div", { class: "player" }, h("div", {}, h("div", { class: "muted" }, kind === "ll1" ? "Stack (top on the left)" : "Stack (states and symbols, top on the right)"), stackBox),
+                                   h("div", {}, h("div", { class: "muted" }, "Input"), inBox)),
+    act, h("div", { class: "controls" }, prev, next, play, slider, lab));
+  draw();
+}
+
+// ---------------- bridge ----------------
+$("#toNfa").addEventListener("click", async () => {
+  const r = await api("/grammar/to-nfa", { grammar: $("#gram").value });
+  if (!r.ok) { $("#nfaMsg").className = "err"; $("#nfaMsg").textContent = r.data.error; $("#nfaJson").hidden = true; $("#toMin").hidden = true; return; }
+  lastNfa = r.data; $("#nfaMsg").className = "ok"; $("#nfaMsg").textContent = "The grammar is right-linear.";
+  $("#nfaJson").hidden = false; $("#nfaJson").textContent = JSON.stringify(r.data, null, 2); $("#toMin").hidden = false;
+});
+$("#toMin").addEventListener("click", () => { try { localStorage.setItem("fl.nfa", JSON.stringify(lastNfa)); } catch (_) {} location.href = "/minimize/ui#nfa"; });
+
+analyze();
+</script>
+{% endblock %}

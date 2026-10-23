@@ -1,0 +1,144 @@
+{% extends "_layout.html" %}
+{% block title %}Syntax-directed definitions{% endblock %}
+{% block content %}
+<h1>Syntax-directed definitions</h1>
+<p class="lede">An SDD is stored as data: a grammar, an attribute table and one list of semantic rules per production. The evaluator parses the string, builds the dependency graph of the parse tree, orders it topologically and evaluates. If the graph has a cycle, the SDD is circular and evaluation stops.</p>
+
+<section class="card">
+  <div class="grid2">
+    <div>
+      <label for="preset">SDD</label>
+      <div class="row" style="margin-top:0"><select id="preset"></select><span id="classify" class="pill"></span></div>
+      <p id="presetDesc" class="muted" style="margin-top:8px"></p>
+      <label for="defn" style="margin-top:10px">Definition (editable JSON)</label>
+      <textarea id="defn" spellcheck="false" style="min-height:260px; font-size:12px"></textarea>
+      <div class="muted" style="font-size:12px;margin-top:4px">Rules use <code>X.attr</code>, or <code>$0</code> (head) and <code>$1</code>, <code>$2</code>… (body positions) when a symbol repeats. Expressions: arithmetic, comparisons, <code>and/or/not</code>, <code>a if c else b</code>, <code>max min abs int str len</code>.</div>
+    </div>
+    <div>
+      <label for="ins">Strings, one per line</label>
+      <textarea id="ins" spellcheck="false" style="min-height:140px"></textarea>
+      <div class="row">
+        <label style="display:flex;gap:6px;align-items:center;margin:0;font-weight:500"><input type="checkbox" id="circ"> Make the SDD circular (Step 6)</label>
+      </div>
+      <div class="row"><button id="evalBtn">Evaluate</button><button id="descBtn" class="ghost">Check definition</button><span id="sstatus" class="muted"></span></div>
+      <div id="defErr" class="err" style="margin-top:8px"></div>
+    </div>
+  </div>
+</section>
+
+<section class="card" id="descCard" hidden>
+  <h2>Definition</h2>
+  <div class="grid2">
+    <div><h3 style="margin-top:0">Attributes</h3><div id="attrTable" class="scroll"></div></div>
+    <div><h3 style="margin-top:0">Classification (Sections 5.2.3 and 5.2.4)</h3><div id="classBox"></div></div>
+  </div>
+  <h3>Semantic rules</h3><div id="ruleTable" class="scroll"></div>
+</section>
+
+<div id="evalOut"></div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+let presets = [];
+async function init() {
+  const r = await api("/sdd/presets");
+  if (!r.ok) { $("#defErr").textContent = r.data.error; return; }
+  presets = r.data;
+  presets.forEach(p => $("#preset").append(h("option", { value: p.id }, p.name)));
+  $("#preset").addEventListener("change", () => loadPreset($("#preset").value));
+  await loadPreset(presets[0].id);
+}
+async function loadPreset(id) {
+  const r = await api("/sdd/presets/" + id);
+  if (!r.ok) { $("#defErr").textContent = r.data.error; return; }
+  const p = r.data, { samples, id: _i, ...rest } = p;
+  $("#defn").value = JSON.stringify(rest, null, 2);
+  $("#ins").value = samples.join("\n");
+  $("#presetDesc").textContent = p.description;
+  $("#evalOut").replaceChildren();
+  await describe();
+}
+function readDefn() {
+  try { return JSON.parse($("#defn").value); } catch (e) { $("#defErr").textContent = "The definition is not valid JSON: " + e.message; return null; }
+}
+async function describe() {
+  $("#defErr").textContent = "";
+  const definition = readDefn(); if (!definition) return false;
+  const r = await api("/sdd/describe", { definition });
+  if (!r.ok) { $("#defErr").textContent = r.data.error; $("#descCard").hidden = true; $("#classify").textContent = ""; return false; }
+  const d = r.data; $("#descCard").hidden = false;
+  $("#classify").textContent = d.classification.verdict; $("#classify").className = "pill " + (d.classification.lAttributed ? "yes" : "no");
+  $("#attrTable").replaceChildren(h("table", { class: "data" }, h("tr", {}, ["Symbol", "Attribute", "Kind"].map(t => h("th", {}, t))),
+    d.attributes.map(a => h("tr", {}, h("td", {}, a.symbol), h("td", { class: "mono" }, a.attribute), h("td", { class: "left" }, a.kind)))));
+  const c = d.classification;
+  $("#classBox").replaceChildren(
+    h("p", {}, h("b", {}, c.verdict), ". ", c.sAttributed ? "It has no inherited attributes (S-attributed)." : "It has inherited attributes, so it is not S-attributed."),
+    c.reasons.length ? h("ul", { style: "margin:0;padding-left:18px" }, c.reasons.map(t => h("li", {}, t))) : h("p", { class: "muted" }, "Every inherited attribute depends only on the head's inherited attributes and on symbols to its left (Section 5.2.4)."),
+    ...d.warnings.map(w => h("p", { class: "bad" }, w)));
+  $("#ruleTable").replaceChildren(h("table", { class: "rules" }, h("tr", {}, h("th", {}, "Production"), h("th", {}, "Semantic rules")),
+    d.rules.map(r => h("tr", {}, h("td", { class: "mono" }, r.production.replace("->", "→").replace(/ e$/, " ε")),
+      h("td", { class: "mono" }, h("ul", {}, r.rules.map(x => h("li", {}, x))))))));
+  return true;
+}
+$("#descBtn").addEventListener("click", describe);
+
+$("#evalBtn").addEventListener("click", async () => {
+  $("#defErr").textContent = "";
+  const definition = readDefn(); if (!definition) return;
+  const inputs = $("#ins").value.split("\n").map(s => s.trim()).filter(Boolean);
+  $("#sstatus").textContent = "Evaluating…";
+  const r = await api("/sdd/evaluate", { definition, inputs, circular: $("#circ").checked });
+  $("#sstatus").textContent = "";
+  if (!r.ok) { $("#defErr").textContent = r.data.error; $("#evalOut").replaceChildren(); return; }
+  await describe();
+  $("#evalOut").replaceChildren(...r.data.results.map((x, i) => resultCard(x, i, r.data.main)));
+});
+
+function resultCard(x, idx, mainName) {
+  const card = h("section", { class: "card" });
+  const title = h("h2", {}, "Input: ", h("code", {}, x.input === "" ? "ε" : (x.input.length > 40 ? x.input.slice(0, 37) + "…" : x.input)));
+  card.append(title);
+  if (!x.accepted) {
+    card.append(h("div", { class: "verdict" }, h("span", { class: "pill no" }, "no")), h("p", { class: "muted" }, "The string is not in the language of the grammar. " + (x.error ? x.error.message : "")));
+    return card;
+  }
+  if (x.circular) {
+    card.append(h("div", { class: "verdict" }, h("span", { class: "pill no" }, "The SDD is circular")),
+      h("p", {}, x.message), h("p", { class: "mono" }, "Cycle: " + x.cycle.join("  →  ")));
+    const g = h("div", { class: "graph" }); card.append(h("h3", {}, "Dependency graph (cycle in red)"), g); drawDot(g, x.dot);
+    return card;
+  }
+  card.append(h("div", { class: "verdict" }, h("span", { class: "pill yes" }, "yes"), h("span", {}, `${mainName} = `, h("b", { class: "mono" }, String(x.main.value))),
+    h("span", { class: "muted" }, `${x.parser} parser · ${x.stats.treeNodes} tree nodes · ${x.stats.attributeInstances} attribute instances · ${x.stats.edges} edges`)));
+  const tabs = h("div", {}, h("div", { class: "tabs" }, h("button", { "data-tab": "t" }, "Annotated tree"), h("button", { "data-tab": "g" }, "Dependency graph, step by step"), h("button", { "data-tab": "o" }, "Evaluation order")));
+  const tPanel = h("div", { "data-panel": "t" }), gPanel = h("div", { "data-panel": "g" }), oPanel = h("div", { "data-panel": "o" });
+  const tg = h("div", { class: "graph" }); tPanel.append(tg, h("details", {}, h("summary", {}, "As indented text"), h("pre", {}, treeToText(x.tree))));
+  drawDot(tg, treeToDot(x.tree, true));
+  oPanel.append(h("div", { class: "scroll" }, h("table", { class: "data" }, h("tr", {}, ["#", "Attribute", "Rule", "Uses", "Value"].map(t => h("th", {}, t))),
+    x.order.map(s => h("tr", {}, h("td", {}, s.step), h("td", { class: "left" }, s.vertex), h("td", { class: "left" }, s.rule),
+      h("td", { class: "left" }, s.uses.map(u => `${u.vertex}=${u.value}`).join(", ")), h("td", {}, String(s.value)))))));
+  tabs.append(tPanel, gPanel, oPanel); card.append(tabs);
+  const gg = h("div", { class: "graph" }); const info = h("div", { class: "action" }); const slider = h("input", { type: "range", min: 0, max: x.order.length, value: 0, "aria-label": "Evaluation step" });
+  const prev = h("button", { class: "ghost" }, "Back"), next = h("button", {}, "Next"), play = h("button", { class: "ghost" }, "Play"), lab = h("span", { class: "muted" });
+  gPanel.append(h("p", { class: "muted" }, "Blue edges go from the attribute that is used to the attribute that is defined. Evaluated attributes turn green; the one just computed is highlighted."), gg, info,
+    h("div", { class: "controls" }, prev, next, play, slider, lab));
+  let svg = null, k = 0, timer = null; const byId = new Map();
+  drawDot(gg, x.dot).then(s => { svg = s; if (s) s.querySelectorAll("g.node").forEach(n => { const t = n.querySelector("title"); if (t) byId.set(t.textContent, n); }); paint(); });
+  function paint() {
+    slider.value = k; lab.textContent = `Step ${k} of ${x.order.length}`; prev.disabled = k === 0; next.disabled = k === x.order.length;
+    x.order.forEach((s, j) => { const n = byId.get(s.id); if (!n) return; const e = n.querySelector("ellipse"); if (!e) return;
+      e.setAttribute("fill", j < k - 1 ? "#bfe8cb" : j === k - 1 ? "#f5d547" : "#ffffff"); });
+    info.textContent = k === 0 ? "Leaves already carry their lexval. Press Next to evaluate the first attribute." :
+      (() => { const s = x.order[k - 1]; return `${s.vertex} = ${s.value}    (${s.rule})`; })();
+  }
+  const stop = () => { clearInterval(timer); timer = null; play.textContent = "Play"; };
+  prev.onclick = () => { stop(); k = Math.max(0, k - 1); paint(); }; next.onclick = () => { stop(); k = Math.min(x.order.length, k + 1); paint(); };
+  slider.oninput = () => { stop(); k = +slider.value; paint(); };
+  play.onclick = () => { if (timer) return stop(); play.textContent = "Pause"; timer = setInterval(() => { if (k >= x.order.length) return stop(); k++; paint(); }, 500); };
+  initTabs(card);
+  return card;
+}
+init();
+</script>
+{% endblock %}

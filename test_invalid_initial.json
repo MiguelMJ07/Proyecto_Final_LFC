@@ -1,0 +1,9 @@
+{
+    "states": [0, 1],
+    "alphabet": ["a"],
+    "initial": 99,
+    "accepting": [1],
+    "transitions": [
+        {"from": 0, "symbol": "a", "to": 1}
+    ]
+}

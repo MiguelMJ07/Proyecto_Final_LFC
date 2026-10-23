@@ -1,0 +1,381 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>DFA Minimization</title>
+<script src="{{ url_for('static', filename='vendor/viz-standalone.js') }}"></script>
+<script src="{{ url_for('static', filename='common-nav.js') }}"></script>
+<style>
+  :root { --bg:#f7f7f5; --card:#fff; --ink:#1f2328; --muted:#6b7280; --line:#e5e7eb;
+          --accent:#2563eb; --ok:#15803d; --bad:#b91c1c; --eq:#fde68a; }
+  * { box-sizing: border-box; }
+  body { margin:0; font:15px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif; background:var(--bg); color:var(--ink); }
+  main { max-width:1100px; margin:0 auto; padding:24px 16px 64px; }
+  h1 { font-size:22px; margin:0 0 4px; } h2 { font-size:17px; margin:0 0 12px; }
+  h3 { font-size:13px; margin:18px 0 8px; color:var(--muted); text-transform:uppercase; letter-spacing:.04em; }
+  p.sub { color:var(--muted); margin:0 0 20px; }
+  code { font-family:ui-monospace, Menlo, monospace; font-size:13px; }
+  .card { background:var(--card); border:1px solid var(--line); border-radius:10px; padding:16px; margin-bottom:16px; }
+  textarea { width:100%; min-height:200px; font:14px/1.4 ui-monospace, Menlo, monospace; padding:10px;
+             border:1px solid var(--line); border-radius:8px; resize:vertical; }
+  button { font:inherit; padding:7px 14px; border-radius:8px; border:1px solid var(--accent); background:var(--accent); color:#fff; cursor:pointer; }
+  button.ghost { background:#fff; color:var(--accent); }
+  .row { display:flex; gap:8px; flex-wrap:wrap; align-items:center; margin-top:10px; }
+  pre { background:#f3f4f6; padding:10px; border-radius:8px; overflow:auto; font-size:13px; margin:0; }
+  .err { color:var(--bad); font-weight:600; }
+  .grid2 { display:grid; grid-template-columns:1fr 1fr; gap:16px; }
+  @media (max-width:760px) { .grid2 { grid-template-columns:1fr; } }
+  .graph { border:1px solid var(--line); border-radius:8px; padding:8px; overflow:auto; min-height:120px; text-align:center; }
+  .graph svg { max-width:100%; height:auto; }
+  .graph pre { text-align:left; }
+  .chip { display:inline-block; padding:2px 10px; border-radius:999px; background:#eef2ff; margin:2px 4px 2px 0;
+          font-family:ui-monospace, Menlo, monospace; font-size:13px; }
+  .chip.eq { background:var(--eq); }
+  .scroll { overflow:auto; }
+  table.mark { border-collapse:collapse; font-family:ui-monospace, Menlo, monospace; font-size:13px; }
+  table.mark td, table.mark th { min-width:44px; height:32px; padding:0 4px; text-align:center; border:1px solid var(--line); }
+  table.mark th { background:#f9fafb; font-weight:600; border:none; }
+  table.mark td.empty { border:none; }
+  table.mark td.eq { background:var(--eq); font-weight:700; }
+  table.mark td.new { background:#dbeafe; font-weight:700; outline:2px solid var(--accent); outline-offset:-2px; }
+  button:disabled { opacity:.4; cursor:default; }
+  .roundinfo { margin-top:10px; } .roundinfo ul { margin:6px 0 0; padding-left:20px; font-size:14px; }
+  .roundinfo li { margin-bottom:3px; }
+  .graph .note { font-size:12px; color:var(--muted); margin-top:4px; }
+  .stats span { margin-right:16px; color:var(--muted); } .stats b { color:var(--ink); }
+  .muted { color:var(--muted); }
+  .ok { color:var(--ok); font-weight:600; } .bad { color:var(--bad); font-weight:600; }
+  input[type=text] { font:14px ui-monospace, Menlo, monospace; padding:7px 10px; border:1px solid var(--line); border-radius:8px; min-width:220px; }
+</style>
+<link rel="stylesheet" href="{{ url_for('static', filename='app.css') }}">
+<style>main { max-width:1100px; } h1 { font-size:28px; }</style>
+</head>
+<body>
+{% include '_rail.html' %}
+<main>
+  <h1>DFA Minimization</h1>
+  <p class="sub">Kozen (1997), Lecture 14 &mdash; table-filling (marking) algorithm.
+     Assignment 2: <code>POST {{ url_for('minimization.minimize') }}</code>, <code>POST {{ url_for('minimization.compare') }}</code>.
+     Assignment 1: <code>POST {{ url_for('automata.convert') }}</code>, <code>POST {{ url_for('automata.simulate') }}</code>.</p>
+
+  <section class="card">
+    <h2>Input (course format)</h2>
+    <textarea id="input" spellcheck="false">{{ example }}</textarea>
+    <div class="row">
+      <button id="run">Minimize</button>
+      <button class="ghost" id="load">Load example</button>
+      <span id="status" class="muted"></span>
+    </div>
+  </section>
+
+  <section class="card" id="nfa">
+    <h2>Or start from an NFA (Assignment 1 → Assignment 2)</h2>
+    <p class="muted">The NFA (JSON, as for <code>/convert</code>) is converted by the Assignment 1 endpoint and the resulting DFA
+      is sent unchanged to <code>/minimize</code>. Preloaded: the NFA from the Assignment 1 statement.</p>
+    <textarea id="nfaInput" spellcheck="false">{{ nfa_example }}</textarea>
+    <div class="row">
+      <button id="nfaRun">Convert, then minimize</button>
+      <span id="nfaStatus" class="muted"></span>
+    </div>
+  </section>
+
+  <section class="card" id="summary" hidden>
+    <p id="pipeline" class="ok" hidden></p>
+    <h2>Output (equivalent pairs, one line per case)</h2>
+    <pre id="output"></pre>
+  </section>
+
+  <div id="cases"></div>
+
+  <section class="card">
+    <h2>Compare two DFAs</h2>
+    <p class="muted">Input with exactly 2 cases. The same marking algorithm runs on the disjoint union of both automata:
+      they accept the same language iff their initial states end up unmarked. Preloaded: the example and its minimized DFA.</p>
+    <textarea id="cmpInput" spellcheck="false">{{ compare_example }}</textarea>
+    <div class="row"><button id="cmpRun">Compare</button><span id="cmpOut"></span></div>
+  </section>
+</main>
+
+<script>
+const ENDPOINT = "{{ url_for('minimization.minimize') }}";
+const COMPARE = "{{ url_for('minimization.compare') }}";
+const CONVERT = "{{ url_for('automata.convert') }}";     // Assignment 1
+const SIMULATE = "{{ url_for('automata.simulate') }}";   // Assignment 1
+const EXAMPLE = document.getElementById("input").value;
+// Graphviz (viz.js) is loaded from a CDN; without internet the page shows the DOT source instead.
+const PALETTE = ["#fde68a", "#bfdbfe", "#bbf7d0", "#fbcfe8", "#ddd6fe", "#fed7aa", "#99f6e4", "#e5e7eb"];
+const vizReady = window.Viz ? Viz.instance() : Promise.reject(new Error("viz.js not loaded"));
+vizReady.catch(() => {});
+
+const $ = (tag, attrs = {}, ...kids) => {
+  const el = document.createElement(tag);
+  for (const [k, v] of Object.entries(attrs)) k === "class" ? el.className = v : el.setAttribute(k, v);
+  for (const k of kids) el.append(k);
+  return el;
+};
+
+async function post(url, body, json = false) {
+  try {
+    const res = await fetch(url, { method: "POST", body: json ? JSON.stringify(body) : body,
+      headers: { "Content-Type": json ? "application/json" : "text/plain" } });
+    const data = await res.json().catch(() => ({ error: `HTTP ${res.status}` }));
+    return res.ok ? data : { error: data.error || `HTTP ${res.status}` };
+  } catch (e) {
+    return { error: "Could not reach the server." };
+  }
+}
+
+document.getElementById("load").onclick = () => { document.getElementById("input").value = EXAMPLE; };
+document.getElementById("run").onclick = run;
+document.getElementById("cmpRun").onclick = async () => {
+  const out = document.getElementById("cmpOut");
+  out.replaceChildren(renderEquivalence(await post(COMPARE, document.getElementById("cmpInput").value)));
+};
+
+async function run() {
+  const status = document.getElementById("status");
+  status.textContent = "Running…"; status.className = "muted";
+  const data = await post(ENDPOINT, document.getElementById("input").value);
+  if (data.error) { status.textContent = data.error; status.className = "err"; return; }
+  status.textContent = `${data.numCases} case(s) processed.`;
+  show(data, null);
+}
+
+// NFA -> POST /convert (Assignment 1) -> POST /minimize (Assignment 2), without touching the DFA in between.
+document.getElementById("nfaRun").onclick = async () => {
+  const status = document.getElementById("nfaStatus");
+  let nfa;
+  try { nfa = JSON.parse(document.getElementById("nfaInput").value); }
+  catch (e) { status.textContent = "The NFA is not valid JSON."; status.className = "err"; return; }
+  status.textContent = "Running…"; status.className = "muted";
+  const dfa = await post(CONVERT, nfa, true);
+  if (dfa.error) { status.textContent = `/convert: ${dfa.error}`; status.className = "err"; return; }
+  const data = await post(ENDPOINT, dfa, true);
+  if (data.error) { status.textContent = `/minimize: ${data.error}`; status.className = "err"; return; }
+  status.textContent = "Done."; status.className = "muted";
+  const s = data.cases[0].stats;
+  show(data, `NFA: ${nfa.states.length} states → DFA from /convert: ${dfa.dfaStates.length} states → ` +
+             `minimal DFA from /minimize: ${s.statesMinimized} states`);
+};
+
+function show(data, banner) {
+  const pipeline = document.getElementById("pipeline");
+  pipeline.hidden = !banner; pipeline.textContent = banner || "";
+  document.getElementById("summary").hidden = false;
+  document.getElementById("output").textContent = data.output.trim() ? data.output : "(no equivalent pairs)";
+  const box = document.getElementById("cases"); box.replaceChildren();
+  data.cases.forEach(c => box.append(renderCase(c)));
+}
+
+function renderEquivalence(r) {
+  if (r.error) return $("span", { class: "err" }, r.error);
+  return r.equivalent
+    ? $("span", { class: "ok" }, "Equivalent: L(M1) = L(M2)")
+    : $("span", {}, $("span", { class: "bad" }, "Not equivalent. "), r.explanation);
+}
+
+function renderCase(c) {
+  const card = $("section", { class: "card" }, $("h2", {}, `Case ${c.case}`));
+  const s = c.stats;
+  card.append($("div", { class: "stats" },
+    ...[["states", `${s.statesOriginal} → ${s.statesMinimized}`], ["pairs", s.pairsTotal],
+        ["marked", s.pairsMarked], ["equivalent", s.pairsEquivalent], ["rounds", s.rounds]]
+      .map(([k, v]) => $("span", {}, `${k}: `, $("b", {}, String(v))))));
+  if (c.removedInaccessibleStates.length)
+    card.append($("p", { class: "err" }, `Inaccessible states removed first: ${c.removedInaccessibleStates.join(", ")}`));
+
+  card.append($("h3", {}, "Equivalent pairs"));
+  const pairs = $("div");
+  if (!c.equivalentPairs.length) pairs.append($("span", { class: "muted" }, "None — no two states can be collapsed."));
+  c.equivalentPairs.forEach(([p, q]) => pairs.append($("span", { class: "chip eq" }, `(${p}, ${q})`)));
+  card.append(pairs);
+
+  card.append($("h3", {}, "Equivalence classes → states of M/≈"));
+  const cls = $("div");
+  c.equivalenceClasses.forEach((g, i) => cls.append($("span", { class: "chip" + (g.length > 1 ? " eq" : "") }, `${i} = {${g.join(",")}}`)));
+  card.append(cls);
+
+  if (c.steps) {
+    card.append($("h3", {}, "Marking table, round by round (Xk = marked in round k, hover a cell for its witness)"));
+    card.append(renderStepper(c.steps));
+  } else if (c.stepsOmitted) {
+    card.append($("p", { class: "muted" }, c.stepsOmitted));
+  }
+
+  const g1 = $("div", { class: "graph" }), g2 = $("div", { class: "graph" });
+  card.append($("div", { class: "grid2" },
+    $("div", {}, $("h3", {}, "Original (equivalent states share a colour)"), g1),
+    $("div", {}, $("h3", {}, "Minimized M/≈"), g2)));
+  // Colour of each class with more than one state (same palette as the server's DOT output).
+  const classColor = {};
+  let colorIdx = 0;
+  c.equivalenceClasses.forEach((g, i) => { if (g.length > 1) classColor[i] = PALETTE[colorIdx++ % PALETTE.length]; });
+  const fillOriginal = {};
+  c.equivalenceClasses.forEach((g, i) => g.forEach(q => { if (classColor[i]) fillOriginal[String(q)] = classColor[i]; }));
+  drawGraph(g1, c.dot.original, c.originalDfa, q => q, q => fillOriginal[String(q)]);
+  drawGraph(g2, c.dot.minimized, c.minimizedDfa, q => c.minimizedDfa.stateLabels[String(q)], q => classColor[q]);
+
+  card.append($("h3", {}, "Minimized DFA (course format, can be pasted back as input)"), $("pre", {}, c.minimizedDfa.courseFormat));
+  card.append(renderTester(c));
+
+  const verifyOut = $("span");
+  const verify = $("button", { class: "ghost" }, "Verify L(M) = L(M/≈)");
+  verify.onclick = async () => verifyOut.replaceChildren(renderEquivalence(
+    await post(COMPARE, { cases: [c.originalDfa, c.minimizedDfa] }, true)));
+  card.append($("div", { class: "row" }, verify, verifyOut));
+  return card;
+}
+
+// Stepper: replays Kozen's table. Round 0 = step 2, rounds 1..k = passes of step 3, last = no change (step 4).
+function renderStepper(steps) {
+  const rounds = steps.rounds, last = rounds.length - 1;
+  let k = last;
+  const tableBox = $("div", { class: "scroll" }), info = $("div", { class: "roundinfo" }), label = $("b");
+  const start = $("button", { class: "ghost" }, "⏮ Start"), prev = $("button", { class: "ghost" }, "◀ Previous");
+  const next = $("button", { class: "ghost" }, "Next ▶"), end = $("button", { class: "ghost" }, "End ⏭");
+  const draw = () => {
+    label.textContent = `Round ${k} of ${last}`;
+    start.disabled = prev.disabled = k === 0;
+    next.disabled = end.disabled = k === last;
+    tableBox.replaceChildren(renderTable(steps.markingTable, k, k === last));
+    const r = rounds[k];
+    info.replaceChildren($("div", {}, $("b", {}, r.description)));
+    if (r.marked.length) {
+      const ul = $("ul");
+      r.marked.slice(0, 40).forEach(m => ul.append($("li", {}, `{${m.pair.join(", ")}}: ${m.reason}; witness `,
+        $("code", {}, m.witness === "" ? "ε" : m.witness))));
+      if (r.marked.length > 40) ul.append($("li", { class: "muted" }, `… and ${r.marked.length - 40} more`));
+      info.append(ul);
+    } else if (k === last) {
+      info.append($("div", { class: "muted" }, "Step 4: the pairs left unmarked (=) are exactly the equivalent states."));
+    }
+  };
+  start.onclick = () => { k = 0; draw(); };  prev.onclick = () => { k--; draw(); };
+  next.onclick = () => { k++; draw(); };     end.onclick = () => { k = last; draw(); };
+  draw();
+  return $("div", {}, $("div", { class: "row" }, start, prev, label, next, end), tableBox, info);
+}
+
+function renderTable(t, upTo = Infinity, final = true) {
+  if (!t.rows.length) return $("p", { class: "muted" }, "Single state: no pairs to compare.");
+  const table = $("table", { class: "mark" });
+  t.rows.forEach(row => {
+    const tr = $("tr", {}, $("th", {}, String(row.state)));
+    row.cells.forEach(cell => {
+      if (cell.round === null || cell.round > upTo) {         // not marked (yet)
+        tr.append(cell.round === null && final
+          ? $("td", { class: "eq", title: `${cell.p} ≈ ${cell.q}` }, "=") : $("td", {}, ""));
+      } else {
+        tr.append($("td", { class: cell.round === upTo ? "new" : "",
+                            title: `witness: ${cell.witness === "" ? "ε" : `"${cell.witness}"`}` }, `X${cell.round}`));
+      }
+    });
+    for (let i = row.cells.length; i < t.columns.length; i++) tr.append($("td", { class: "empty" }));
+    table.append(tr);
+  });
+  const foot = $("tr", {}, $("th"));
+  t.columns.forEach(p => foot.append($("th", {}, String(p))));
+  table.append(foot);
+  return table;
+}
+
+function drawGraph(el, dot, dfa, labelOf, fillOf) {
+  vizReady.then(viz => el.replaceChildren(viz.renderSVGElement(dot)))
+          .catch(() => {
+            const svg = svgGraph(dfa, labelOf, fillOf);
+            el.replaceChildren(...(svg ? [svg, $("div", { class: "note" }, "Built-in layout (Graphviz unavailable offline).")]
+                                       : [$("pre", {}, dot)]));
+          });
+}
+
+// Offline renderer: states on a circle, curved edges (parallel symbols merged), self-loops, double circle = final.
+function svgGraph(dfa, labelOf, fillOf) {
+  const n = dfa.states.length;
+  if (n > 24) return null;
+  const NS = "http://www.w3.org/2000/svg";
+  const S = (tag, attrs = {}, text) => {
+    const e = document.createElementNS(NS, tag);
+    for (const [k, v] of Object.entries(attrs)) e.setAttribute(k, v);
+    if (text !== undefined) e.textContent = text;
+    return e;
+  };
+  const key = q => String(q), label = q => String(labelOf(q));
+  const RY = 17, rxOf = q => Math.max(RY, label(q).length * 3.7 + 9);
+  const R = n === 1 ? 0 : Math.max(80, n * 30);
+  const cx = R + 110, cy = R + 70;
+  const pos = {}, dir = {};
+  dfa.states.forEach((q, i) => {
+    const t = -Math.PI / 2 + (2 * Math.PI * i) / n;
+    dir[key(q)] = n === 1 ? [0, -1] : [Math.cos(t), Math.sin(t)];
+    pos[key(q)] = [cx + R * dir[key(q)][0], cy + R * dir[key(q)][1]];
+  });
+  const svg = S("svg", { viewBox: `0 0 ${2 * cx} ${2 * cy}`, width: 2 * cx, role: "img", "font-family": "ui-monospace, Menlo, monospace", "font-size": 12 });
+  const marker = S("marker", { id: "arr", viewBox: "0 0 10 10", refX: 9, refY: 5, markerWidth: 7, markerHeight: 7, orient: "auto-start-reverse" });
+  marker.append(S("path", { d: "M0,0 L10,5 L0,10 z", fill: "#1f2328" }));
+  const defs = S("defs"); defs.append(marker); svg.append(defs);
+  const edge = (d) => S("path", { d, fill: "none", stroke: "#1f2328", "stroke-width": 1.2, "marker-end": "url(#arr)" });
+  const text = (x, y, t, fill = "#1f2328") => S("text", { x, y, "text-anchor": "middle", "dominant-baseline": "middle", fill }, t);
+  const boundary = (q, ux, uy) => 1 / Math.sqrt((ux / rxOf(q)) ** 2 + (uy / RY) ** 2);
+
+  const groups = {};
+  dfa.transitions.forEach(t => {
+    const k = key(t.from) + "\u0000" + key(t.to);
+    (groups[k] = groups[k] || { from: t.from, to: t.to, syms: [] }).syms.push(t.symbol);
+  });
+  Object.values(groups).forEach(({ from, to, syms }) => {
+    const [x1, y1] = pos[key(from)], lab = syms.join(",");
+    if (key(from) === key(to)) {                       // self-loop, drawn outwards
+      const [ux, uy] = dir[key(from)], r = boundary(from, ux, uy);
+      const a0 = Math.atan2(uy, ux) - 0.45, a1 = Math.atan2(uy, ux) + 0.45;
+      const p0 = [x1 + r * Math.cos(a0), y1 + r * Math.sin(a0)], p1 = [x1 + r * Math.cos(a1), y1 + r * Math.sin(a1)];
+      const c0 = [x1 + (r + 42) * Math.cos(a0 - 0.35), y1 + (r + 42) * Math.sin(a0 - 0.35)];
+      const c1 = [x1 + (r + 42) * Math.cos(a1 + 0.35), y1 + (r + 42) * Math.sin(a1 + 0.35)];
+      svg.append(edge(`M${p0} C${c0} ${c1} ${p1}`));
+      svg.append(text(x1 + (r + 44) * ux, y1 + (r + 44) * uy, lab));
+      return;
+    }
+    const [x2, y2] = pos[key(to)], dx = x2 - x1, dy = y2 - y1, len = Math.hypot(dx, dy), ux = dx / len, uy = dy / len;
+    const bend = 22, mx = (x1 + x2) / 2 - uy * bend, my = (y1 + y2) / 2 + ux * bend;   // reverse edges bend the other way
+    const s = [x1 + ux * boundary(from, ux, uy), y1 + uy * boundary(from, ux, uy)];
+    const e = [x2 - ux * boundary(to, ux, uy), y2 - uy * boundary(to, ux, uy)];
+    svg.append(edge(`M${s} Q${mx},${my} ${e}`));
+    svg.append(text(0.25 * s[0] + 0.5 * mx + 0.25 * e[0] - uy * 8, 0.25 * s[1] + 0.5 * my + 0.25 * e[1] + ux * 8, lab, "#2563eb"));
+  });
+  const [ix, iy] = pos[key(dfa.initial)];                // initial-state arrow from the left
+  svg.append(edge(`M${ix - rxOf(dfa.initial) - 38},${iy} L${ix - rxOf(dfa.initial) - 2},${iy}`));
+  dfa.states.forEach(q => {
+    const [x, y] = pos[key(q)];
+    svg.append(S("ellipse", { cx: x, cy: y, rx: rxOf(q), ry: RY, fill: fillOf(q) || "#ffffff", stroke: "#1f2328", "stroke-width": 1.3 }));
+    if (dfa.accepting.map(key).includes(key(q)))
+      svg.append(S("ellipse", { cx: x, cy: y, rx: rxOf(q) - 3.5, ry: RY - 3.5, fill: "none", stroke: "#1f2328", "stroke-width": 1.1 }));
+    svg.append(text(x, y, label(q)));
+  });
+  return svg;
+}
+
+function renderTester(c) {
+  const input = $("input", { type: "text", placeholder: "string over Σ, e.g. abba" });
+  const out = $("div", { class: "muted" }, "Runs POST /simulate (Assignment 1) on both automata. They must always agree, because L(M) = L(M/≈).");
+  const labels = c.minimizedDfa.stateLabels;
+  const sim = (dfa, x) => post(SIMULATE, { transitions: dfa.transitions, initial: dfa.initial,
+                                           accepting: dfa.accepting, input: x }, true);
+  input.oninput = async () => {
+    const x = input.value.trim();
+    const bad = [...x].find(ch => !c.originalDfa.alphabet.includes(ch));
+    if (bad !== undefined) { out.replaceChildren($("span", { class: "err" }, `'${bad}' is not in Σ`)); return; }
+    const [a, b] = await Promise.all([sim(c.originalDfa, x), sim(c.minimizedDfa, x)]);
+    if (x !== input.value.trim()) return;           // a newer keystroke already started another request
+    if (a.error || b.error) { out.replaceChildren($("span", { class: "err" }, a.error || b.error)); return; }
+    const verdict = r => $("span", { class: r.accepted ? "ok" : "bad" }, r.accepted ? "accepted" : "rejected");
+    out.replaceChildren(
+      $("div", {}, "M:    ", a.path.join(" → ") + "  ", verdict(a)),
+      $("div", {}, "M/≈: ", b.path.map(q => labels[String(q)]).join(" → ") + "  ", verdict(b)));
+  };
+  return $("div", {}, $("h3", {}, "Try a string"), input, out);
+}
+
+run();
+</script>
+</body>
+</html>
