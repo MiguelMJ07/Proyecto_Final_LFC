@@ -80,3 +80,44 @@ function initTabs(root = document) {
     show(btns[0].dataset.tab);
   });
 }
+
+// Download text as a file (used by the LaTeX export buttons).
+function downloadText(filename, text, type = "application/x-tex") {
+  const a = h("a", { href: URL.createObjectURL(new Blob([text], { type })), download: filename });
+  document.body.append(a); a.click(); a.remove();
+}
+
+// Saved sessions (server-side SQLite). `getPayload()` returns the object to save; `setPayload(p)` restores it.
+function initSessions(kind, mount, getPayload, setPayload) {
+  const box = typeof mount === "string" ? $(mount) : mount;
+  const sel = h("select", { "aria-label": "Saved sessions" }), name = h("input", { type: "text", placeholder: "Name", "aria-label": "Session name", style: "min-width:140px;width:160px" });
+  const msg = h("span", { class: "muted" });
+  const save = h("button", { class: "ghost" }, "Save"), open = h("button", { class: "ghost" }, "Open"), del = h("button", { class: "ghost" }, "Delete");
+  box.replaceChildren(h("div", { class: "row", style: "margin-top:0" }, sel, open, del, name, save, msg));
+  async function refresh(pick) {
+    const r = await api("/sessions?kind=" + kind);
+    sel.replaceChildren(h("option", { value: "" }, r.ok ? `Saved (${r.data.length})` : "Saved: unavailable"));
+    if (r.ok) r.data.forEach(s => sel.append(h("option", { value: s.id }, s.name)));
+    if (pick) sel.value = pick;
+    open.disabled = del.disabled = !sel.value;
+  }
+  sel.addEventListener("change", () => { open.disabled = del.disabled = !sel.value; });
+  save.addEventListener("click", async () => {
+    const n = name.value.trim() || (sel.selectedOptions[0] && sel.value ? sel.selectedOptions[0].text : "");
+    if (!n) { msg.className = "bad"; msg.textContent = "Type a name first."; return; }
+    let payload;
+    try { payload = getPayload(); } catch (e) { msg.className = "bad"; msg.textContent = "Nothing to save: " + e.message; return; }
+    const r = await api("/sessions", { kind, name: n, payload });
+    msg.className = r.ok ? "ok" : "bad"; msg.textContent = r.ok ? `Saved "${n}".` : r.data.error;
+    if (r.ok) { name.value = ""; refresh(String(r.data.id)); }
+  });
+  open.addEventListener("click", async () => {
+    const r = await api("/sessions/" + sel.value);
+    if (r.ok) { setPayload(r.data.payload); msg.className = "ok"; msg.textContent = `Opened "${r.data.name}".`; } else { msg.className = "bad"; msg.textContent = r.data.error; }
+  });
+  del.addEventListener("click", async () => {
+    const r = await api("/sessions/" + sel.value, undefined, "DELETE");
+    msg.className = r.ok ? "ok" : "bad"; msg.textContent = r.ok ? "Deleted." : r.data.error; refresh();
+  });
+  refresh();
+}

@@ -7,6 +7,7 @@
 #   POST /grammar/analyze   everything above plus the decision of Section 2.2.2
 #   POST /grammar/parse     strings -> yes/no (+ parse tree, + step-by-step trace)
 #   POST /grammar/to-nfa    right-linear grammar -> NFA (input of /convert)
+#   POST /grammar/compare   do two right-linear grammars generate the same language?
 #   GET  /grammar/examples  grammars of the assignment and a regular one
 #   GET  /grammar/ui        interactive page
 from flask import Blueprint, jsonify, render_template
@@ -87,7 +88,16 @@ def parse():
     trace = data.get("trace", False)
     if not isinstance(trace, bool):
         raise BadRequest("Field 'trace' must be true or false.")
-    return jsonify(gateway.parse(data["grammar"], inputs, parser, trace))
+    recover = data.get("recover", False)
+    if not isinstance(recover, bool):
+        raise BadRequest("Field 'recover' must be true or false.")
+    return jsonify(gateway.parse(data["grammar"], inputs, parser, trace, recover))
+
+
+@grammar_bp.route("/grammar/compare", methods=["POST"])
+def compare():
+    data = json_body(["grammars"])
+    return jsonify(gateway.compare_regular(data["grammars"]))
 
 
 @grammar_bp.route("/grammar/ui", methods=["GET"])

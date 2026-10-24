@@ -21,6 +21,13 @@
 {% endfor %}
 </div>
 
+<div class="grid3" style="margin-top:6px">
+  <a class="stage" style="padding-right:16px" href="/practice/ui"><h2>Practice mode</h2><p>Random grammars to trace by hand, with item-by-item correction. Training for the oral defense.</p></a>
+  <a class="stage" style="padding-right:16px" href="/docs"><h2>API docs</h2><p>Every endpoint with a runnable example (Swagger UI, bundled, works offline).</p></a>
+  <a class="stage" style="padding-right:16px" href="/grammar/ui"><h2>Report tables</h2><p>Download the tables of any analysis as a LaTeX file, ready for the report.</p></a>
+</div>
+<style>.grid3 .stage::after { display: none; }</style>
+
 <section class="card" style="margin-top:22px">
   <h2>Run the full chain on a regular grammar</h2>
   <p class="muted">The grammar goes to <code>/grammar/to-nfa</code>, the NFA to <code>/convert</code> and the DFA to <code>/minimize</code>, exactly as the earlier assignments defined them.</p>

@@ -2,8 +2,9 @@
 # exception into a ValueError (-> HTTP 400), the same pattern as AutomataGateway.
 from functions.cfg_grammar import GrammarError, parse_grammar, sets_json
 from functions.cfg_ll1 import LL1
-from functions.cfg_regular import right_linear_to_nfa
+from functions.cfg_regular import regular_to_dfa, right_linear_to_nfa
 from functions.cfg_slr1 import SLR1, MAX_STATES
+from gateways.minimization_gateway import MinimizationGateway
 
 MAX_GRAMMAR_CHARS = 20000
 MAX_STRINGS = 200
@@ -73,7 +74,7 @@ class GrammarGateway:
             out["slr1"].update(automaton=slr.automaton_json(), table=slr.table_json(), dot=slr.dot())
         return out
 
-    def parse(self, text, strings, parser="auto", trace=False):
+    def parse(self, text, strings, parser="auto", trace=False, recover=False):
         g = self.load(text)
         ll, slr = LL1(g), SLR1(g)
         case, message, parsers = self._verdict(ll, slr)
@@ -88,16 +89,20 @@ class GrammarGateway:
             raise ValueError(f"The grammar is not {name}; its parser cannot be used ({message})")
         if not isinstance(strings, list) or len(strings) > MAX_STRINGS or not all(isinstance(s, str) for s in strings):
             raise ValueError(f"Field 'inputs' must be a list of at most {MAX_STRINGS} strings (the empty string is written 'e' or '').")
+        if recover and parser != "ll1":
+            raise ValueError("Panic-mode recovery (Section 4.4.5) is defined for the predictive (LL(1)) parser.")
         p = ll if parser == "ll1" else slr
         results = []
         for s in strings:
             w = "" if s.strip() == "e" else s.strip()
-            r = p.parse(w, trace=trace)
+            r = p.parse_recover(w, trace=trace) if recover else p.parse(w, trace=trace)
             item = {"input": s, "accepted": r["accepted"], "answer": "yes" if r["accepted"] else "no"}
-            if r["accepted"]:
+            if r["accepted"] and r["tree"]:
                 item["tree"] = r["tree"]
-            else:
-                item["error"] = r["error"]
+            elif not r["accepted"]:
+                item["error"] = r["error"] or (r["errors"][0] if recover and r["errors"] else None)
+            if recover:
+                item["errors"] = r["errors"]
             if trace:
                 item["trace"] = r["trace"]
             results.append(item)
@@ -109,3 +114,19 @@ class GrammarGateway:
             return right_linear_to_nfa(g)
         except ValueError as e:
             raise ValueError(str(e))
+
+    def compare_regular(self, texts):
+        """Do two right-linear grammars generate the same language? grammar -> NFA -> DFA (Assignment 1) over the
+        union of both alphabets, then the equivalence test of Assignment 2."""
+        if not isinstance(texts, list) or len(texts) != 2:
+            raise ValueError("Field 'grammars' must be a list of exactly two grammars.")
+        gs = [self.load(t) for t in texts]
+        alphabet = sorted(set(gs[0].terminals) | set(gs[1].terminals))
+        try:
+            dfas = [regular_to_dfa(g, alphabet) for g in gs]
+        except ValueError as e:
+            raise ValueError(f"{e}")
+        result = MinimizationGateway().compare_json({"cases": dfas})
+        result["alphabet"] = alphabet
+        result["dfaStates"] = [len(d["dfaStates"]) for d in dfas]
+        return result

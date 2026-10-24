@@ -21,6 +21,8 @@
         <label style="display:flex;gap:6px;align-items:center;margin:0;font-weight:500"><input type="checkbox" id="circ"> Make the SDD circular (Step 6)</label>
       </div>
       <div class="row"><button id="evalBtn">Evaluate</button><button id="descBtn" class="ghost">Check definition</button><span id="sstatus" class="muted"></span></div>
+      <div class="row"><button id="texBtn" class="ghost">Download LaTeX tables</button><span id="texMsg" class="muted"></span></div>
+      <h3>Saved SDDs</h3><div id="sessionsBox"></div>
       <div id="defErr" class="err" style="margin-top:8px"></div>
     </div>
   </div>
@@ -139,6 +141,15 @@ function resultCard(x, idx, mainName) {
   initTabs(card);
   return card;
 }
+$("#texBtn").addEventListener("click", async () => {
+  const definition = readDefn(); if (!definition) return;
+  const first = $("#ins").value.split("\n").map(s => s.trim()).filter(Boolean)[0];
+  const r = await api("/export/latex/sdd", { definition, circular: $("#circ").checked, input: first });
+  $("#texMsg").className = r.ok ? "ok" : "bad";
+  if (r.ok) { downloadText(r.data.filename, r.data.tex); $("#texMsg").textContent = "Downloaded " + r.data.filename + (first ? ` (evaluation of ${first.length > 14 ? first.slice(0, 12) + "…" : first})` : ""); } else $("#texMsg").textContent = r.data.error;
+});
+initSessions("sdd", "#sessionsBox", () => ({ definition: JSON.parse($("#defn").value), inputs: $("#ins").value, circular: $("#circ").checked }),
+  p => { $("#defn").value = JSON.stringify(p.definition, null, 2); $("#ins").value = p.inputs || ""; $("#circ").checked = !!p.circular; $("#evalOut").replaceChildren(); describe(); });
 init();
 </script>
 {% endblock %}

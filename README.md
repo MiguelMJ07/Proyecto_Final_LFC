@@ -21,7 +21,7 @@ endpoint (or a few) and has its own page.
 ## Environment
 
 - OS: <fill in, e.g. Windows 11 / Ubuntu 24.04>
-- Python: 3.10 or newer (developed and tested with Python 3.12)
+- Python: 3.10 or newer. The full test suite was run on Python 3.11 and 3.13 (3.10 was not run; the code avoids 3.12-only syntax).
 - Flask 3.0.3 or newer, pytest 8.3.3 or newer (`requirements.txt`). No parser generators or parsing libraries are used.
 - Browser pages use `@viz-js/viz` 3.11.0 (Graphviz compiled to WebAssembly, MIT), bundled in `src/static/vendor/`,
   so the pages work without internet access.
@@ -39,7 +39,7 @@ python src/app.py                 # http://127.0.0.1:5000
 Optional environment variables: `PORT` (default 5000), `HOST` (default 127.0.0.1), `FLASK_DEBUG=0` to turn off the reloader.
 The coloured dot in the left rail of every page shows whether the browser can reach the server (`GET /health`).
 
-Tests: `pytest tests/` (950 tests: the two earlier assignments plus the new stages; includes a property test that
+Tests: `pytest tests/` (978 tests: the two earlier assignments plus the new stages; includes a property test that
 checks both parsers against a brute-force enumeration of the language of random grammars).
 
 ### Items 1 and 2 from the command line (protocol of Section 2.2 of the assignment)
@@ -89,6 +89,10 @@ src/
 │   ├── grammar_controller.py       #   Items 1-2: /grammar/*
 │   ├── sdd_controller.py           #   Item 3: /sdd/*
 │   ├── pages_controller.py         #   /, /health, /api
+│   ├── practice_controller.py      #   extra: /practice/*
+│   ├── export_controller.py        #   extra: /export/latex/*
+│   ├── sessions_controller.py      #   extra: /sessions (SQLite)
+│   ├── docs_controller.py, openapi_spec.py   # extra: /docs (Swagger UI), /openapi.json
 │   └── http_utils.py               #   strict JSON body reading, uniform JSON errors
 ├── gateways/                       # orchestration; every internal error becomes a ValueError (HTTP 400)
 │   ├── automata_gateway.py, minimization_gateway.py
@@ -103,7 +107,10 @@ src/
 │   ├── cfg_sdd.py                  #   SDD as data, validation, classification, dependency graph, evaluation
 │   ├── cfg_sdd_presets.py          #   the SDDs, stored as data
 │   ├── safe_expr.py                #   safe expression language for semantic rules (no eval)
-│   └── cfg_regular.py              #   right-linear grammar -> NFA (bridge to A1/A2)
+│   ├── cfg_regular.py              #   right-linear grammar -> NFA (bridge to A1/A2)
+│   ├── practice.py                 #   extra: seeded practice exercises and their checkers
+│   ├── latex_export.py             #   extra: LaTeX tables of the report
+│   └── sessions_store.py           #   extra: SQLite store for saved work
 ├── templates/                      # hub, grammar, sdd, minimization pages + shared rail
 └── static/                         # app.css, common.js, vendor/viz-standalone.js
 cli/main.py, cli/sdd_cli.py         # stdin/stdout programs required by the assignment
@@ -180,6 +187,19 @@ and table, and the LR(0) automaton with the SLR(1) tables and conflicts. `POST /
 "parser": "ll1" | "slr1" | "auto", "trace": true}` and answers `yes`/`no` for each string, with the parse tree and every step.
 `POST /grammar/to-nfa` turns a right-linear grammar into an NFA in the exact format of `/convert`, so a regular grammar can go
 through `/convert` and `/minimize`. Errors are always JSON `{"error": "...", "line": n}` with HTTP 400 (404/405/413 for routing and size).
+
+## Extras beyond the assignment
+
+| Feature | Where | Notes |
+|---|---|---|
+| Panic-mode error recovery (Aho Section 4.4.5) | `POST /grammar/parse` with `"recover": true`, LL(1) only | Synchronizing set = FOLLOW. Blank entry: skip the input symbol; synch entry: pop the nonterminal; terminal mismatch: pop it. At `$` with a blank entry the nonterminal is popped (our addition, so recovery always ends). No tree is built; the string is accepted only if no error was reported. |
+| Compare two regular grammars | `POST /grammar/compare`, tab in `/grammar/ui` | Right-linear grammars to NFA, DFA over the union alphabet, then `/minimize/compare`. Returns a shortest counterexample. |
+| Practice mode | `/practice/ui`, `GET /practice/new`, `POST /practice/check` | Generated exercises (FIRST/FOLLOW, LL(1) table, derivation, LR(0) closure). Same seed gives the same exercise, so the server stores nothing. |
+| LaTeX tables for the report | `POST /export/latex/grammar`, `/export/latex/sdd` (add `?download=1`) | Compiled with `pdflatex` in the tests when it is installed. |
+| Saved work | `/sessions` (GET, POST, GET/DELETE `/sessions/<id>`) | SQLite file `data/sessions.db`, or `SESSIONS_DB`. |
+| API documentation | `/docs` (Swagger UI 5, bundled, Apache-2.0), `/openapi.json` | A test checks that every route is described. |
+| Docker | `Dockerfile` (gunicorn) | **Not built or run by the authors** (no Docker daemon was available). Try `docker build -t fl . && docker run -p 5000:5000 fl`. |
+| CI | `.github/workflows/test.yml` | **Not run yet**; it runs pytest on Python 3.10-3.13. |
 
 ## Generative AI tools
 

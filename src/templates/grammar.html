@@ -14,6 +14,8 @@
         <button id="analyze">Analyze grammar</button>
         <span id="gstatus" class="muted"></span>
       </div>
+      <div class="row"><button id="texBtn" class="ghost" disabled>Download LaTeX tables</button><span id="texMsg" class="muted"></span></div>
+      <h3>Saved grammars</h3><div id="sessionsBox"></div>
     </div>
     <div>
       <h3 style="margin-top:0">Decision (Section 2.2.2 of the assignment)</h3>
@@ -30,6 +32,7 @@
     <button data-tab="slr1">SLR(1) automaton and tables</button>
     <button data-tab="parse">Parse strings</button>
     <button data-tab="nfa">Regular grammar → NFA</button>
+    <button data-tab="cmp">Compare regular grammars</button>
   </div>
 
   <section data-panel="sets" class="card">
@@ -61,6 +64,7 @@
           <select id="which" aria-label="Parser"><option value="auto">Parser: automatic</option><option value="ll1">LL(1) (Algorithm 4.34)</option><option value="slr1">SLR(1) (LR algorithm)</option></select>
           <button id="parseBtn">Parse</button>
         </div>
+        <label style="display:flex;gap:6px;align-items:center;margin:10px 0 0;font-weight:500"><input type="checkbox" id="recover"> Recover from syntax errors (panic mode, Section 4.4.5; LL(1) only)</label>
       </div>
       <div><h3 style="margin-top:0">Answers</h3><div id="answers" class="muted">No strings parsed yet.</div></div>
     </div>
@@ -78,6 +82,19 @@
     <div class="row"><button id="toNfa">Build the NFA</button><span id="nfaMsg"></span></div>
     <pre id="nfaJson" hidden style="margin-top:10px"></pre>
     <div class="row"><button id="toMin" class="ghost" hidden>Convert to DFA and minimize</button></div>
+  </section>
+
+  <section data-panel="cmp" class="card">
+    <h2>Compare regular grammars</h2>
+    <p class="muted">Both grammars must be right-linear. Each becomes an NFA, then a DFA over the union of the alphabets, and the equivalence test of the minimization stage decides whether they generate the same language. If not, you get the shortest string that tells them apart.</p>
+    <div class="grid2">
+      <div><label for="cmpA">Grammar A (the one above)</label><textarea id="cmpA" spellcheck="false" style="min-height:110px"></textarea></div>
+      <div><label for="cmpB">Grammar B</label><textarea id="cmpB" spellcheck="false" style="min-height:110px">2
+S -> aS bS aB
+B -> b</textarea></div>
+    </div>
+    <div class="row"><button id="cmpBtn">Compare</button><button id="cmpFill" class="ghost">Use the grammar above as A</button></div>
+    <div id="cmpOut" style="margin-top:12px"></div>
   </section>
 </section>
 {% endblock %}
@@ -101,12 +118,13 @@ async function analyze() {
   const r = await api("/grammar/analyze", { grammar: $("#gram").value });
   $("#gstatus").textContent = "";
   if (!r.ok) {
-    $("#results").hidden = true;
+    $("#results").hidden = true; $("#texBtn").disabled = true;
     $("#verdict").replaceChildren(h("div", { class: "err" }, r.data.error + (r.data.line ? `\n(line ${r.data.line})` : "")));
     $("#prods").replaceChildren();
     return;
   }
   const d = lastAnalysis = r.data;
+  $("#texBtn").disabled = false;
   $("#results").hidden = false;
   $("#verdict").replaceChildren(
     h("div", { class: "verdict" },
@@ -182,11 +200,12 @@ $("#analyze").addEventListener("click", analyze);
 let lastParse = null;
 $("#parseBtn").addEventListener("click", async () => {
   const inputs = $("#strs").value.split("\n").map(s => s.trim()).filter(s => s !== "");
-  const r = await api("/grammar/parse", { grammar: $("#gram").value, inputs, parser: $("#which").value, trace: true });
+  const recover = $("#recover").checked;
+  const r = await api("/grammar/parse", { grammar: $("#gram").value, inputs, parser: $("#which").value, trace: true, recover });
   const box = $("#answers"); $("#detail").hidden = true;
   if (!r.ok) { box.replaceChildren(h("div", { class: "err" }, r.data.error)); return; }
   if (!r.data.results.length) { box.replaceChildren(h("div", { class: "bad" }, r.data.message)); return; }
-  lastParse = r.data;
+  lastParse = r.data; lastParse.recover = recover;
   box.replaceChildren(h("div", { class: "muted" }, `Parser: ${r.data.parser === "ll1" ? "LL(1)" : "SLR(1)"}`),
     h("table", { class: "data", style: "margin-top:6px" }, h("tr", {}, h("th", {}, "String"), h("th", {}, "Answer"), h("th", {}, "")),
       r.data.results.map((x, i) => h("tr", {}, h("td", { class: "left" }, x.input), h("td", { class: x.accepted ? "ok" : "bad" }, x.answer),
@@ -199,7 +218,10 @@ function showDetail(i) {
   $("#detail").hidden = false; $("#detailName").textContent = x.input === "" ? "ε" : x.input;
   makePlayer($("#player"), x, lastParse.parser);
   const tb = $("#treeBox");
-  if (x.accepted) drawDot(tb, treeToDot(x.tree)); else tb.replaceChildren(h("div", { class: "err" }, x.error ? x.error.message : "Rejected."));
+  if (x.accepted && x.tree) drawDot(tb, treeToDot(x.tree));
+  else if (lastParse.recover && x.errors) tb.replaceChildren(x.errors.length ? h("div", { style: "text-align:left;padding:6px 10px" }, h("b", {}, `${x.errors.length} syntax error(s) found; the parser recovered from each one:`),
+      h("ul", {}, x.errors.map(e => h("li", {}, `position ${e.position}: ${e.message} Action: ${e.action}.`)))) : h("div", { class: "ok" }, "No errors; recovery was not needed (no tree is built in recovery mode)."));
+  else tb.replaceChildren(h("div", { class: "err" }, x.error ? x.error.message : "Rejected."));
 }
 
 function makePlayer(root, x, kind) {
@@ -224,7 +246,7 @@ function makePlayer(root, x, kind) {
     inBox.replaceChildren();
     const consumed = full.length - s.input.length;
     [...full].forEach((c, k) => inBox.append(h("span", { class: "cell" + (k < consumed ? " done" : k === consumed ? " next" : "") }, c)));
-    act.className = "action" + (s.action === "accept" ? " accept" : s.action === "error" ? " error" : "");
+    act.className = "action" + (s.action === "accept" ? " accept" : s.action.startsWith("error") ? " error" : "");
     act.textContent = s.action;
     slider.value = i; lab.textContent = `Step ${i + 1} of ${tr.length}`;
     prev.disabled = i === 0; next.disabled = i === tr.length - 1;
@@ -250,6 +272,25 @@ $("#toNfa").addEventListener("click", async () => {
 });
 $("#toMin").addEventListener("click", () => { try { localStorage.setItem("fl.nfa", JSON.stringify(lastNfa)); } catch (_) {} location.href = "/minimize/ui#nfa"; });
 
-analyze();
+$("#cmpFill").addEventListener("click", () => { $("#cmpA").value = $("#gram").value; });
+$("#cmpBtn").addEventListener("click", async () => {
+  const out = $("#cmpOut"); if (!$("#cmpA").value.trim()) $("#cmpA").value = $("#gram").value;
+  const r = await api("/grammar/compare", { grammars: [$("#cmpA").value, $("#cmpB").value] });
+  if (!r.ok) { out.replaceChildren(h("div", { class: "err" }, r.data.error)); return; }
+  const d = r.data;
+  out.replaceChildren(h("div", { class: "verdict" }, h("span", { class: "pill " + (d.equivalent ? "yes" : "no") }, d.equivalent ? "Same language" : "Different languages"),
+    h("span", { class: "muted" }, `DFAs over {${d.alphabet.join(", ")}} with ${d.dfaStates[0]} and ${d.dfaStates[1]} states`)),
+    h("p", {}, d.explanation || ""),
+    d.counterexample !== undefined && d.counterexample !== null ? h("p", {}, "Shortest distinguishing string: ", h("code", {}, d.counterexample === "" ? "ε (the empty string)" : d.counterexample), `, generated only by grammar ${d.acceptedBy === "first" ? "A" : "B"}.`) : "");
+});
+$("#texBtn").addEventListener("click", async () => {
+  const inputs = $("#strs").value.split("\n").map(s => s.trim()).filter(Boolean).slice(0, 10);
+  const r = await api("/export/latex/grammar", { grammar: $("#gram").value, inputs, parser: $("#which").value });
+  $("#texMsg").className = r.ok ? "ok" : "bad";
+  if (r.ok) { downloadText(r.data.filename, r.data.tex); $("#texMsg").textContent = "Downloaded " + r.data.filename; } else $("#texMsg").textContent = r.data.error;
+});
+initSessions("grammar", "#sessionsBox", () => ({ grammar: $("#gram").value, inputs: $("#strs").value }),
+  p => { $("#gram").value = p.grammar || ""; $("#strs").value = p.inputs || ""; analyze(); });
+analyze().then(() => { $("#texBtn").disabled = !lastAnalysis; });
 </script>
 {% endblock %}

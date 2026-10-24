@@ -6,6 +6,10 @@
     <a href="/grammar/ui" {% if request.path == '/grammar/ui' %}aria-current="page"{% endif %}><span class="n">3</span><span>Grammars &amp; parsers<small>/grammar/*</small></span></a>
     <a href="/sdd/ui" {% if request.path == '/sdd/ui' %}aria-current="page"{% endif %}><span class="n">4</span><span>Syntax-directed defs<small>/sdd/*</small></span></a>
   </nav>
+  <nav aria-label="Tools" class="tools">
+    <a href="/practice/ui" {% if request.path == '/practice/ui' %}aria-current="page"{% endif %}><span class="n">+</span><span>Practice mode<small>/practice/*</small></span></a>
+    <a href="/docs" {% if request.path == '/docs' %}aria-current="page"{% endif %}><span class="n">+</span><span>API docs<small>/docs</small></span></a>
+  </nav>
   <div class="status"><span class="dot" id="serverDot"></span><span id="serverText">Checking server…</span></div>
   <div class="links"><a href="/api">API index</a><a href="/health">Health</a></div>
 </aside>

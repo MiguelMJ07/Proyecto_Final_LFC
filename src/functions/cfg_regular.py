@@ -24,3 +24,15 @@ def right_linear_to_nfa(g):
     states = list(g.nonterminals) + [FINAL]
     return {"states": states, "alphabet": list(g.terminals), "initial": g.start,
             "accepting": sorted(set(accepting), key=str), "transitions": trans}
+
+
+def regular_to_dfa(g, alphabet):
+    """Right-linear grammar -> NFA -> DFA over the given alphabet (subset construction of Assignment 1).
+    Returns a DFA in the JSON shape that /minimize and /minimize/compare accept (the output of /convert)."""
+    from functions.subset_construction import format_dfa_result, subset_construction
+    nfa = right_linear_to_nfa(g)
+    states, trans, acc = subset_construction(nfa["states"], list(alphabet), nfa["initial"], nfa["accepting"],
+                                             nfa["transitions"])
+    names, transitions, accepting = format_dfa_result(states, trans, acc)
+    return {"dfaStates": names, "alphabet": list(alphabet), "initial": names[0],
+            "acceptingStates": accepting, "transitions": transitions}

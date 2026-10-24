@@ -1,0 +1,116 @@
+{% extends "_layout.html" %}
+{% block title %}Practice{% endblock %}
+{% block content %}
+<h1>Practice for the defense</h1>
+<p class="lede">The oral presentation can ask you to trace an algorithm by hand on a grammar you have not seen. Work each exercise on paper first, then type your answer and check it. The same seed always gives the same grammar, so you can share an exercise.</p>
+
+<section class="card">
+  <div class="row" style="margin-top:0">
+    <select id="kind" aria-label="Exercise type"></select>
+    <select id="diff" aria-label="Difficulty"><option value="1">Easy</option><option value="2" selected>Medium</option><option value="3">Hard</option></select>
+    <button id="newBtn">New exercise</button>
+    <label for="seed" style="margin:0 0 0 8px">Seed</label><input type="text" id="seed" style="min-width:90px;width:100px" inputmode="numeric">
+    <button id="loadSeed" class="ghost">Open seed</button>
+  </div>
+</section>
+
+<section class="card" id="exCard" hidden>
+  <h2 id="exTitle"></h2>
+  <div class="grid2">
+    <div>
+      <h3 style="margin-top:0">Grammar</h3>
+      <div id="prods" class="scroll"></div>
+      <div id="extra" style="margin-top:10px"></div>
+    </div>
+    <div>
+      <h3 style="margin-top:0">Your answer</h3>
+      <div id="form"></div>
+      <div class="row"><button id="checkBtn">Check</button><button id="solBtn" class="ghost" disabled>Show solution</button></div>
+    </div>
+  </div>
+  <div id="feedback" style="margin-top:14px"></div>
+  <div id="solution" hidden style="margin-top:14px"></div>
+</section>
+{% endblock %}
+
+{% block scripts %}
+<script>
+let ex = null, last = null;
+const short = t => t.replace(/ -> /, " → ").replace(/ e$/, " ε");
+(async () => {
+  const r = await api("/practice/kinds");
+  (r.ok ? r.data : []).forEach(k => $("#kind").append(h("option", { value: k.kind }, k.title)));
+  const q = new URLSearchParams(location.search);
+  if (q.get("kind")) $("#kind").value = q.get("kind");
+  if (q.get("diff")) $("#diff").value = q.get("diff");
+  load(q.get("seed"));
+})();
+async function load(seed) {
+  const url = `/practice/new?kind=${$("#kind").value}&difficulty=${$("#diff").value}` + (seed ? `&seed=${encodeURIComponent(seed)}` : "");
+  const r = await api(url);
+  if (!r.ok) { $("#exCard").hidden = false; $("#feedback").replaceChildren(h("div", { class: "err" }, r.data.error)); return; }
+  ex = r.data; last = null; $("#seed").value = ex.seed;
+  history.replaceState(null, "", `?kind=${ex.kind}&seed=${ex.seed}&diff=${ex.difficulty}`);
+  render();
+}
+$("#newBtn").addEventListener("click", () => load());
+$("#loadSeed").addEventListener("click", () => load($("#seed").value.trim()));
+$("#kind").addEventListener("change", () => load()); $("#diff").addEventListener("change", () => load());
+
+function yesNo(id, label) {
+  return h("div", { class: "row", style: "margin-top:0" }, h("label", { for: id, style: "margin:0" }, label),
+           h("select", { id }, h("option", { value: "" }, "choose"), h("option", { value: "yes" }, "yes"), h("option", { value: "no" }, "no")));
+}
+function render() {
+  $("#exCard").hidden = false; $("#exTitle").textContent = ex.title + ` (exercise ${ex.seed})`;
+  $("#feedback").replaceChildren(); $("#solution").replaceChildren(); $("#solution").hidden = true; $("#solBtn").disabled = true;
+  $("#prods").replaceChildren(h("table", { class: "data" }, h("tr", {}, h("th", {}, "#"), h("th", {}, "Production")),
+    ex.productions.map(p => h("tr", {}, h("td", {}, p.index), h("td", { class: "left" }, short(p.text))))));
+  const form = $("#form"), extra = $("#extra"); form.replaceChildren(); extra.replaceChildren();
+  if (ex.kind === "sets") {
+    form.append(h("p", { class: "muted" }, "Write each set as a list, for example: a, d, e. Use e for ε and $ for the end marker."),
+      h("table", { class: "data" }, h("tr", {}, ["", "FIRST", "FOLLOW"].map(t => h("th", {}, t))),
+        ex.nonterminals.map(A => h("tr", {}, h("th", {}, A), h("td", {}, h("input", { type: "text", id: "f_" + A, style: "min-width:120px;width:140px", "aria-label": "FIRST of " + A })),
+                                                         h("td", {}, h("input", { type: "text", id: "w_" + A, style: "min-width:120px;width:140px", "aria-label": "FOLLOW of " + A }))))));
+  } else if (ex.kind === "ll1_table") {
+    form.append(yesNo("isLL1", "Is the grammar LL(1)?"), h("p", { class: "muted" }, "In each cell write the numbers of the productions (for example 0 or 1, 3); leave an error entry blank."),
+      h("div", { class: "scroll" }, h("table", { class: "data" }, h("tr", {}, h("th", {}, "M"), ex.columns.map(c => h("th", {}, c))),
+        ex.nonterminals.map(A => h("tr", {}, h("th", {}, A), ex.columns.map(c => h("td", {}, h("input", { type: "text", "data-cell": A + "," + c, style: "min-width:48px;width:54px;padding:5px", "aria-label": `M[${A},${c}]` }))))))));
+  } else if (ex.kind === "derivation") {
+    extra.append(h("p", {}, "Input string: ", h("code", { style: "font-size:16px" }, ex.input)),
+      h("p", { class: "muted" }, "Run the table-driven parser by hand. Write the numbers of the productions it outputs, in order. If it finds an error, stop at the last production output before the error."));
+    form.append(h("label", { for: "prodSeq" }, "Productions output, in order"), h("input", { type: "text", id: "prodSeq", placeholder: "for example: 0 2 1 3", style: "width:100%" }), yesNo("result", "Is the string accepted?"));
+  } else if (ex.kind === "lr0") {
+    form.append(h("label", { for: "closure" }, "CLOSURE({S' → .S}), one item per line"), h("textarea", { id: "closure", style: "min-height:110px", placeholder: "S' -> .S\nS -> .AB" }),
+      h("div", { class: "row" }, h("label", { for: "nstates", style: "margin:0" }, "LR(0) states"), h("input", { type: "text", id: "nstates", style: "min-width:60px;width:70px", inputmode: "numeric" })),
+      yesNo("isSLR", "Is the grammar SLR(1)?"));
+    extra.append(h("p", { class: "muted" }, "Augment the grammar with S' → S. Write an item as the production with a dot, for example A -> a.B; an ε-production gives A -> ."));
+  }
+}
+function collect() {
+  if (ex.kind === "sets") return { first: Object.fromEntries(ex.nonterminals.map(A => [A, $("#f_" + A).value])), follow: Object.fromEntries(ex.nonterminals.map(A => [A, $("#w_" + A).value])) };
+  if (ex.kind === "ll1_table") return { isLL1: $("#isLL1").value === "" ? null : $("#isLL1").value === "yes", cells: Object.fromEntries($$("[data-cell]").map(i => [i.dataset.cell, i.value])) };
+  if (ex.kind === "derivation") return { productions: $("#prodSeq").value, result: $("#result").value };
+  return { closure: $("#closure").value, numStates: $("#nstates").value, isSLR1: $("#isSLR").value === "" ? null : $("#isSLR").value === "yes" };
+}
+$("#checkBtn").addEventListener("click", async () => {
+  const r = await api("/practice/check", { kind: ex.kind, seed: ex.seed, difficulty: ex.difficulty, answer: collect() });
+  if (!r.ok) { $("#feedback").replaceChildren(h("div", { class: "err" }, r.data.error)); return; }
+  last = r.data; const s = r.data.score;
+  $("#feedback").replaceChildren(
+    h("div", { class: "verdict" }, h("span", { class: "pill " + (s.correct === s.total ? "yes" : "no") }, `${s.correct} of ${s.total} correct`)),
+    h("table", { class: "data" }, r.data.items.map(i => h("tr", {}, h("td", { class: i.ok ? "ok" : "bad" }, i.ok ? "✓" : "✗"), h("td", { class: "left mono" }, i.label), h("td", { class: "left" }, i.message || "")))));
+  $("#solBtn").disabled = false;
+});
+$("#solBtn").addEventListener("click", () => {
+  const box = $("#solution"); if (!last) return;
+  if (!box.hidden) { box.hidden = true; $("#solBtn").textContent = "Show solution"; return; }
+  const s = last.solution; box.replaceChildren(h("h3", {}, "Solution"));
+  if (ex.kind === "sets") box.append(h("pre", {}, s.lines.join("\n")));
+  else if (ex.kind === "ll1_table") box.append(h("p", {}, s.isLL1 ? "The grammar is LL(1)." : "The grammar is not LL(1)."), s.violations.length ? h("ul", {}, s.violations.map(v => h("li", {}, v))) : "", h("pre", {}, s.lines.join("\n")));
+  else if (ex.kind === "derivation") box.append(h("p", {}, "Productions: ", h("code", {}, s.productions.join(" ") || "(none)"), ` · accepted: ${s.result}`), h("pre", {}, "stack | input | action\n" + s.steps.join("\n")));
+  else box.append(h("p", {}, `${s.numStates} states. ${s.isSLR1 ? "SLR(1)." : "Not SLR(1): " + s.conflicts.join("; ")}`), h("p", {}, "CLOSURE: ", h("code", {}, s.closure.join("   "))), h("pre", {}, s.states.join("\n")));
+  box.hidden = false; $("#solBtn").textContent = "Hide solution";
+});
+</script>
+{% endblock %}

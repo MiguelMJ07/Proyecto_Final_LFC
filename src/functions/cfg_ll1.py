@@ -107,10 +107,13 @@ class LL1:
         stack = [None, root]                     # None is the bottom marker $
         i = 0
 
-        def rec(action):
+        def rec(action, production=None):
             if trace and len(res["trace"]) < MAX_TRACE_STEPS:
                 st = [n.symbol for n in reversed(stack[1:])]      # top of the stack first
-                res["trace"].append({"stack": st, "input": "".join(w[i:]), "action": action})
+                step = {"stack": st, "input": "".join(w[i:]), "action": action}
+                if production is not None:
+                    step["production"] = production
+                res["trace"].append(step)
 
         while True:
             X, a = stack[-1], w[i]
@@ -140,8 +143,70 @@ class LL1:
                 return res
             idx = cell[0]
             head, body = g.prods[idx]
-            rec(f"output {prod_str(head, body)}")
+            rec(f"output {prod_str(head, body)}", idx)
             stack.pop()
             X.prod = idx
             X.children = [Node(s) for s in body]
             stack.extend(reversed(X.children))
+
+    def parse_recover(self, w, trace=False):
+        """Panic-mode error recovery for the predictive parser (Section 4.4.5, Figs. 4.22-4.23, Example 4.36).
+        FOLLOW(A) is the synchronizing set of A (heuristic 1): where M[A,a] is blank and a is in FOLLOW(A) the entry is `synch`.
+          * M[A,a] blank           -> skip the input symbol a
+          * M[A,a] is synch        -> pop A, hoping to resume
+          * terminal on top != a   -> pop the terminal (as if it had been inserted)
+        One addition the book does not spell out: at the end marker $ a blank entry cannot be skipped, so A is popped.
+        Returns accepted (True only if no error was found), the list of errors and the trace. No tree is built."""
+        g = self.g
+        res = {"accepted": False, "tree": None, "trace": [], "errors": [], "error": None, "recovered": True}
+        if len(w) > MAX_INPUT or END in w or EPS in w:
+            res["error"] = {"position": 0, "message": "Invalid input (too long, or contains the reserved symbols 'e' or '$')."}
+            return res
+        w = list(w) + [END]
+        stack = [END, g.start]                   # top at the end of the list
+        i, steps = 0, 0
+
+        def rec(action):
+            if trace and len(res["trace"]) < MAX_TRACE_STEPS:
+                res["trace"].append({"stack": list(reversed(stack[1:])), "input": "".join(w[i:]), "action": action})
+
+        def err(msg, action):
+            res["errors"].append({"position": i, "message": msg, "action": action})
+            rec(f"error: {action}")
+
+        while stack[-1] != END or w[i] != END:
+            steps += 1
+            if steps > 20 * (len(w) + 10) * (len(g.prods) + 1):
+                res["error"] = {"position": i, "message": "Recovery stopped (step limit)."}
+                return res
+            X, a = stack[-1], w[i]
+            if X == END:                         # stack empty but input left: skip the extra symbols
+                err(f"Unexpected {a!r} after the end of the derivation.", f"skip {a}")
+                i += 1
+            elif not is_nt(X):
+                if X == a:
+                    rec(f"match {a}")
+                    stack.pop()
+                    i += 1
+                else:
+                    err(f"Expected {X!r} but found {a!r}.", f"pop {X} (as if {X!r} had been inserted)")
+                    stack.pop()
+            else:
+                cell = self.table.get((X, a))
+                if cell:
+                    head, body = g.prods[cell[0]]
+                    rec(f"output {prod_str(head, body)}")
+                    stack.pop()
+                    stack.extend(reversed(body))
+                elif a in g.follow[X]:
+                    err(f"M[{X},{a}] is synch: no production for {a!r} here.", f"M[{X},{a}] = synch; pop {X}")
+                    stack.pop()
+                elif a == END:
+                    err(f"M[{X},$] is blank at the end of the input.", f"pop {X} (the end marker cannot be skipped)")
+                    stack.pop()
+                else:
+                    err(f"M[{X},{a}] is blank.", f"skip {a}")
+                    i += 1
+        rec("accept" if not res["errors"] else "done (input consumed, with errors)")
+        res["accepted"] = not res["errors"]
+        return res

@@ -145,3 +145,5 @@ details { margin-top: 8px; } summary { cursor: pointer; font-weight: 600; }
 @media (max-width: 1000px) { .stage::after { display: none; } }
 .derive { font: 15px/1.9 var(--mono); background: #fff; border: 1px solid var(--line); border-radius: 10px; padding: 14px 18px; }
 .derive .m { background: var(--mark); padding: 0 3px; border-radius: 3px; }
+
+.rail nav.tools { margin-top: 14px; padding-top: 12px; border-top: 1px solid rgba(255,255,255,.12); }
