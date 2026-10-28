@@ -4,6 +4,8 @@
 #   Assignment 2  /minimize, /minimize/compare, /minimize/example, /minimize/ui
 #   Final project /grammar/*, /sdd/*   (First/Follow, LL(1), SLR(1), SDD evaluation)
 #   Pages         /, /health, /api
+# Development: `python src/app.py`. Production (Render, see DESPLIEGUE.md): `gunicorn --chdir src app:app`,
+# which imports `app` from this file and never runs the block at the end.
 import os
 
 from flask import Flask
@@ -27,7 +29,15 @@ for bp in (pages_bp, automata_bp, minimization_bp, grammar_bp, sdd_bp):
 install_error_handlers(app)
 
 
+def run_options(env):
+    """HOST, PORT and FLASK_DEBUG for the development server. The debugger lets whoever opens an error page run
+    Python code, so by default it is on only when the server listens on this machine (127.0.0.1); with
+    HOST=0.0.0.0 other devices can connect and it is off unless FLASK_DEBUG=1 is set explicitly."""
+    host = env.get("HOST", "127.0.0.1")
+    local = host in ("127.0.0.1", "localhost", "::1")
+    return {"host": host, "port": int(env.get("PORT", "5000")),
+            "debug": env.get("FLASK_DEBUG", "1" if local else "0") == "1"}
+
+
 if __name__ == "__main__":
-    # HOST / PORT can be changed with environment variables; debug reload is for development only.
-    app.run(host=os.environ.get("HOST", "127.0.0.1"), port=int(os.environ.get("PORT", "5000")),
-            debug=os.environ.get("FLASK_DEBUG", "1") == "1")
+    app.run(**run_options(os.environ))

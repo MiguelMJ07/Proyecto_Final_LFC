@@ -1,6 +1,7 @@
 # CAPA FUNCTIONS
 # Contiene la lógica pura del algoritmo de subset construction.
 # No tiene ninguna dependencia de Flask ni de HTTP.
+import re
 
 
 def epsilon_closure(states_set, nfa_transitions):
@@ -42,7 +43,7 @@ def move(states_set, symbol, nfa_transitions):
     return result
 
 
-def subset_construction(states, alphabet, initial, accepting, nfa_transitions):
+def subset_construction(states, alphabet, initial, accepting, nfa_transitions, max_states=None):
     """
     Algoritmo de construcción de subconjuntos: convierte un NFA en su DFA
     equivalente. Cada estado del DFA es un frozenset de estados del NFA.
@@ -53,6 +54,9 @@ def subset_construction(states, alphabet, initial, accepting, nfa_transitions):
     La función de transición generada es TOTAL: para cada estado y cada
     símbolo del alfabeto siempre existe una transición, incluso si no hay
     destino real, en cuyo caso apunta al estado "muerto" (conjunto vacío).
+
+    Un NFA de n estados puede dar hasta 2^n estados del DFA; si se pasa
+    `max_states`, se lanza ValueError al superarlo en vez de seguir.
     """
     if isinstance(initial, (list, set, tuple, frozenset)):
         start_states = set(initial)
@@ -82,6 +86,8 @@ def subset_construction(states, alphabet, initial, accepting, nfa_transitions):
             })
 
             if new_dfa_state not in dfa_states:
+                if max_states is not None and len(dfa_states) >= max_states:
+                    raise ValueError(f"The DFA would have more than {max_states} states.")
                 dfa_states.append(new_dfa_state)
                 pending.append(new_dfa_state)
 
@@ -91,14 +97,24 @@ def subset_construction(states, alphabet, initial, accepting, nfa_transitions):
     return dfa_states, transitions, accepting_states
 
 
+def natural_key(state):
+    """
+    Llave de orden natural: los tramos de dígitos se comparan como números,
+    así 2 va antes que 10 y "q2" antes que "q10" (ordenar como texto pondría
+    "10" antes que "2"). Funciona aunque se mezclen estados numéricos y con nombre.
+    """
+    return tuple((0, int(part), "") if part.isdigit() else (1, 0, part)
+                 for part in re.findall(r"\d+|\D+", str(state)))
+
+
 def state_name(dfa_state):
     """
     Convierte un frozenset de estados del NFA en un nombre de texto legible,
-    ej. frozenset({0,1,3,7}) -> "0-1-3-7". El conjunto vacío se llama "dead".
+    ej. frozenset({0,2,10}) -> "0-2-10". El conjunto vacío se llama "dead".
     """
     if not dfa_state:
         return "dead"
-    sorted_states = sorted(dfa_state, key=str)
+    sorted_states = sorted(dfa_state, key=natural_key)
     return "-".join(str(s) for s in sorted_states)
 
 

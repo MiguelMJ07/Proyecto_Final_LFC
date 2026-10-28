@@ -7,9 +7,12 @@
 #   POST /grammar/analyze   everything above plus the decision of Section 2.2.2
 #   POST /grammar/parse     strings -> yes/no (+ parse tree, + step-by-step trace)
 #   POST /grammar/to-nfa    right-linear grammar -> NFA (input of /convert)
+#   POST /grammar/report    plain text: exactly what cli/main.py prints (extra: other output formats)
+#   POST /grammar/export    FIRST/FOLLOW, LL(1) or SLR(1) table as CSV or LaTeX
+#   POST /grammar/graph     LR(0) automaton or parse tree as Graphviz DOT or SVG
 #   GET  /grammar/examples  grammars of the assignment and a regular one
 #   GET  /grammar/ui        interactive page
-from flask import Blueprint, jsonify, render_template
+from flask import Blueprint, Response, jsonify, render_template, request
 
 from controllers.http_utils import BadRequest, grammar_text, json_body
 from functions.cfg_grammar import GrammarError
@@ -32,6 +35,39 @@ EXAMPLES = [
     {"id": "regular", "name": "Regular grammar (strings over {a,b} ending in ab)",
      "grammar": "2\nS -> aS bS aA\nA -> b", "inputs": ["ab", "aab", "abb", "bab"]},
 ]
+
+
+MIMETYPES = {"text": "text/plain", "csv": "text/csv", "latex": "text/x-tex", "dot": "text/vnd.graphviz",
+             "svg": "image/svg+xml"}
+
+
+def _flag(data, name, default):
+    value = data.get(name, default)
+    if not isinstance(value, bool):
+        raise BadRequest(f"Field '{name}' must be true or false.")
+    return value
+
+
+def _query_flag(name, default):
+    value = request.args.get(name)
+    if value is None:
+        return default
+    if value.lower() in ("1", "true", "yes"):
+        return True
+    if value.lower() in ("0", "false", "no"):
+        return False
+    raise BadRequest(f"Query parameter '{name}' must be true or false.")
+
+
+def _inputs(data):
+    inputs = data.get("inputs", data.get("input", []))
+    return [inputs] if isinstance(inputs, str) else inputs
+
+
+def _file(out):
+    """A file response (inline, so curl prints it and the browser shows it; the name is used when it is saved)."""
+    return Response(out["content"], mimetype=MIMETYPES[out["format"]],
+                    headers={"Content-Disposition": f'inline; filename="{out["filename"]}"'})
 
 
 @grammar_bp.errorhandler(GrammarError)
@@ -80,14 +116,36 @@ def to_nfa():
 @grammar_bp.route("/grammar/parse", methods=["POST"])
 def parse():
     data = json_body(["grammar"])
-    inputs = data.get("inputs", data.get("input", []))
-    if isinstance(inputs, str):
-        inputs = [inputs]
-    parser = data.get("parser", "auto")
-    trace = data.get("trace", False)
-    if not isinstance(trace, bool):
-        raise BadRequest("Field 'trace' must be true or false.")
-    return jsonify(gateway.parse(data["grammar"], inputs, parser, trace))
+    trace = _flag(data, "trace", False)
+    return jsonify(gateway.parse(data["grammar"], _inputs(data), data.get("parser", "auto"), trace))
+
+
+@grammar_bp.route("/grammar/report", methods=["POST"])
+def report():
+    """JSON {"grammar", "inputs", "parser", "sets", "tables", "trace"}, or as text/plain exactly the stdin of
+    cli/main.py (flags as query parameters ?sets=&tables=&trace=). The answer is the program's output."""
+    if request.is_json:
+        data = json_body(["grammar"])
+        flags = {name: _flag(data, name, name == "sets") for name in ("sets", "tables", "trace")}
+        text = gateway.report(data["grammar"], _inputs(data), data.get("parser", "auto"), **flags)
+    else:
+        flags = {name: _query_flag(name, name == "sets") for name in ("sets", "tables", "trace")}
+        text = gateway.report_text(request.get_data(as_text=True), **flags)
+    return _file({"content": text, "format": "text", "filename": "report.txt"})
+
+
+@grammar_bp.route("/grammar/export", methods=["POST"])
+def export():
+    data = json_body(["grammar"])
+    return _file(gateway.export(data["grammar"], data.get("table", "sets"), data.get("format", "csv"),
+                                _flag(data, "standalone", False)))
+
+
+@grammar_bp.route("/grammar/graph", methods=["POST"])
+def graph():
+    data = json_body(["grammar"])
+    return _file(gateway.graph(data["grammar"], data.get("graph", "lr0"), data.get("format", "svg"),
+                               data.get("input"), data.get("parser", "auto")))
 
 
 @grammar_bp.route("/grammar/ui", methods=["GET"])

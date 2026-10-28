@@ -9,7 +9,6 @@
 from flask import Blueprint, jsonify, render_template
 
 from controllers.http_utils import json_body, json_error
-from functions.cfg_sdd import SDDError
 from gateways.sdd_gateway import SDDGateway
 
 sdd_bp = Blueprint("sdd", __name__)

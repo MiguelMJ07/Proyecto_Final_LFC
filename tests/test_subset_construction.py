@@ -12,7 +12,6 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
 
 from functions.subset_construction import (
     epsilon_closure,
-    move,
     subset_construction,
     format_dfa_result,
     state_name,
@@ -164,3 +163,28 @@ def test_manual_example_regression():
     assert accepts(f_transitions, initial_name, f_accepting, "ab")
     assert accepts(f_transitions, initial_name, f_accepting, "b")
     assert not accepts(f_transitions, initial_name, f_accepting, "aa")
+
+
+# ---------------------------------------------------------------------------
+# Error abierto de la Asignación 1: los nombres de los estados del DFA se
+# ordenaban como texto ("0-10-2"). Ahora el orden es natural: 2 antes que 10.
+# ---------------------------------------------------------------------------
+def test_state_names_use_natural_order():
+    assert state_name(frozenset({0, 2, 10})) == "0-2-10"
+    assert state_name(frozenset({"q10", "q2", "q1"})) == "q1-q2-q10"
+    assert state_name(frozenset({"10", "9", "100"})) == "9-10-100"
+    assert state_name(frozenset({1, "a", "a10", "a9"})) == "1-a-a9-a10"    # mezcla de números y nombres
+    assert state_name(frozenset()) == "dead"
+
+
+def test_convert_output_uses_natural_order():
+    # 0 --ε--> 2 y 0 --ε--> 10: el estado inicial del DFA es {0, 2, 10}.
+    nfa_transitions = [
+        {"from": 0, "symbol": None, "to": 2},
+        {"from": 0, "symbol": None, "to": 10},
+        {"from": 2, "symbol": "a", "to": 11},
+        {"from": 10, "symbol": "a", "to": 12},
+    ]
+    f_states, _, f_accepting = build_dfa(list(range(13)), ["a"], 0, [11, 12], nfa_transitions)
+    assert f_states[0] == "0-2-10"
+    assert f_accepting == ["11-12"]

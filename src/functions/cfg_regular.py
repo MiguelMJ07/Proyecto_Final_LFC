@@ -1,7 +1,7 @@
 """Bridge between the two worlds of the course: a right-linear (regular) grammar becomes an NFA in the
 JSON format of POST /convert, which can then go to /minimize. Standard construction:
 A -> aB gives A --a--> B ; A -> a gives A --a--> qf ; A -> e makes A accepting."""
-from functions.cfg_grammar import EPS, is_nt
+from functions.cfg_grammar import is_nt
 
 FINAL = "qf"
 

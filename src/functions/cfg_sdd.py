@@ -5,7 +5,7 @@ import heapq
 import re
 from dataclasses import dataclass
 
-from functions.cfg_grammar import EPS, Grammar, GrammarError, is_nt, parse_grammar, prod_str
+from functions.cfg_grammar import EPS, GrammarError, is_nt, parse_grammar, prod_str
 from functions.cfg_ll1 import LL1
 from functions.cfg_slr1 import SLR1
 from functions.cfg_tree import number_nodes
