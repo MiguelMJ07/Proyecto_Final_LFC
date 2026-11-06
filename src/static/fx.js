@@ -86,7 +86,7 @@
     let cv = document.getElementById("confetti");
     if (!cv) { cv = document.createElement("canvas"); cv.id = "confetti"; cv.setAttribute("aria-hidden", "true"); document.body.append(cv); }
     const ctx = cv.getContext("2d"); cv.width = innerWidth; cv.height = innerHeight;
-    const colors = ["#6d28d9", "#be185d", "#0891b2", "#fde047", "#a3e635", "#f472b6"];
+    const colors = ["#1d4ed8", "#ea580c", "#14b8a6", "#fde047", "#a3e635", "#38bdf8"];
     const bits = Array.from({ length: 150 }, () => ({
       x: innerWidth / 2 + (Math.random() - .5) * 160, y: innerHeight * .62, vx: (Math.random() - .5) * 15, vy: -8 - Math.random() * 12,
       w: 6 + Math.random() * 7, h: 4 + Math.random() * 6, r: Math.random() * 6, vr: (Math.random() - .5) * .4, c: colors[(Math.random() * colors.length) | 0]
