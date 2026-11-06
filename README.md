@@ -264,12 +264,15 @@ In PowerShell use `curl.exe` and put the JSON in a file (`-d "@body.json"`), bec
 
 ## Generative AI tools
 
-<Review this list, add every other use by the group (and for which parts), and keep only what is true.>
-
 - **Claude (Anthropic), in Claude Code**, October 2026, to review the finished project against the assignment and to
   write these changes, which the group reviewed: the natural order of DFA state names in `/convert` (`0-2-10`, not
   `0-10-2`); the fix of an HTTP 500 when the LR(0) collection has more than 400 states; the input checks and the
   1000-state limit of `/convert` and `/simulate`; the three extra endpoints `/grammar/report`, `/grammar/export` and
   `/grammar/graph` (`cfg_protocol.py`, now shared with `cli/main.py`, and `cfg_export.py`) with their tests; the
   deployment files (`render.yaml`, gunicorn, `run_options` in `src/app.py`, `DESPLIEGUE.md`); and a CSS fix for phones.
-- <Other tools or uses, or "No other AI tools were used.">
+- **Claude (Anthropic), in Claude Code**, November 2026, to redesign the look of the web interface (`app.css`, `fx.js`,
+  the HTML templates: colours, type, layout and animations) and to resolve the Git merge conflicts between the branches.
+  No algorithm was changed: the group checked that the tests and the examples of the assignment give the same output.
+- **Generative AI assistant (Claude)**, throughout the project, as a study support: to clarify concepts of the books
+  (Aho et al., Kozen) and to ask how to turn those concepts into code. The group read the sections of the book, worked
+  the examples by hand and can explain and modify every part of the code.
