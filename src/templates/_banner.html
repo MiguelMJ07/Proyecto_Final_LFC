@@ -1,0 +1,14 @@
+{# Animated page banner. Set before including: b_theme, b_kicker, b_title (may contain <em>), b_lede, b_rotate (list), b_ticker (list), b_extra (optional HTML). #}
+<header class="banner banner--{{ b_theme|default('hub') }}" data-banner>
+  <div class="b-mesh" aria-hidden="true"></div>
+  <span class="orb o1" aria-hidden="true"></span><span class="orb o2" aria-hidden="true"></span><span class="orb o3" aria-hidden="true"></span>
+  <div class="b-glyphs" aria-hidden="true">{% for g in ['ε','→','∈','δ','λ','$','∗','⇒','Σ','{ }','FIRST','M[A,a]','FOLLOW','S → AB'] %}<span style="--x:{{ (loop.index0 * 7.3 + 2)|round(1) }}%;--d:{{ ((loop.index0 * 1.7) % 9)|round(1) }}s;--t:{{ 12 + (loop.index0 * 3) % 9 }}s;--s:{{ (0.9 + (loop.index0 % 4) * 0.25)|round(2) }}rem">{{ g }}</span>{% endfor %}</div>
+  <div class="b-body">
+    <p class="b-kicker">{{ b_kicker }}</p>
+    <h1>{{ b_title }}</h1>
+    <p class="b-lede">{{ b_lede }}</p>
+    {% if b_rotate %}<p class="b-live" aria-hidden="true"><span class="pulse"></span><span data-rotate="{{ b_rotate|join('|') }}">{{ b_rotate[0] }}</span></p>{% endif %}
+    {% if b_extra %}{{ b_extra }}{% endif %}
+  </div>
+  {% if b_ticker %}<div class="b-ticker" aria-hidden="true"><div class="track">{% for i in range(2) %}<ul>{% for t in b_ticker %}<li>{{ t }}</li>{% endfor %}</ul>{% endfor %}</div></div>{% endif %}
+</header>

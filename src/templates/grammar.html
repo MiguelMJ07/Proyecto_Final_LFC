@@ -1,8 +1,9 @@
 {% extends "_layout.html" %}
 {% block title %}Grammars and parsers{% endblock %}
 {% block content %}
-<h1>Grammars and parsers</h1>
-<p class="lede">Enter a context-free grammar in the course format (first line: number of nonterminals; then one line per nonterminal; <code>e</code> is ε, <code>S</code> is the start symbol). The server computes FIRST and FOLLOW, decides LL(1) and SLR(1), and parses your strings. The grammar is never transformed before the checks.</p>
+{% set b_theme = "grammar" %}{% set b_kicker = "Stage 3 · Items 1–2" %}{% set b_title %}Grammars <em>&amp;</em> parsers{% endset %}{% set b_lede %}Enter a context-free grammar in the course format (first line: number of nonterminals; then one line per nonterminal; <code>e</code> is ε, <code>S</code> is the start symbol). The server computes FIRST and FOLLOW, decides LL(1) and SLR(1), and parses your strings. The grammar is never transformed before the checks.{% endset %}
+{% set b_rotate = ['FIRST(E) = { ( , id }', 'M[A, a] → one production per cell', '$ on the stack and on the input', 'Shift · Reduce · Accept', 'Panic mode: skip, pop, synchronize'] %}{% set b_ticker = ['POST /grammar/analyze', 'POST /grammar/parse', 'POST /grammar/compare', 'POST /grammar/to-nfa', 'POST /export/latex/grammar', 'GET /grammar/examples'] %}{% set b_extra = "" %}
+{% include "_banner.html" %}
 
 <section class="card">
   <div class="grid2">

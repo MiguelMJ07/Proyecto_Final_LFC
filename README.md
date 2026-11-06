@@ -198,6 +198,7 @@ through `/convert` and `/minimize`. Errors are always JSON `{"error": "...", "li
 | LaTeX tables for the report | `POST /export/latex/grammar`, `/export/latex/sdd` (add `?download=1`) | Compiled with `pdflatex` in the tests when it is installed. |
 | Saved work | `/sessions` (GET, POST, GET/DELETE `/sessions/<id>`) | SQLite file `data/sessions.db`, or `SESSIONS_DB`. |
 | API documentation | `/docs` (Swagger UI 5, bundled, Apache-2.0), `/openapi.json` | A test checks that every route is described. |
+| Animated interface | every page | Aurora banners with a live line and an endpoint ticker, a typed derivation and counters on the home page, scroll reveals, tilting cards, confetti when a practice exercise is fully correct. All of it is in `static/app.css` and `static/fx.js`, uses no libraries, and is turned off when the system asks for reduced motion. |
 | Docker | `Dockerfile` (gunicorn) | **Not built or run by the authors** (no Docker daemon was available). Try `docker build -t fl . && docker run -p 5000:5000 fl`. |
 | CI | `.github/workflows/test.yml` | **Not run yet**; it runs pytest on Python 3.10-3.13. |
 

@@ -1,8 +1,9 @@
 {% extends "_layout.html" %}
 {% block title %}Practice{% endblock %}
 {% block content %}
-<h1>Practice for the defense</h1>
-<p class="lede">The oral presentation can ask you to trace an algorithm by hand on a grammar you have not seen. Work each exercise on paper first, then type your answer and check it. The same seed always gives the same grammar, so you can share an exercise.</p>
+{% set b_theme = "practice" %}{% set b_kicker = "Extra · Practice mode" %}{% set b_title %}Practice for the <em>defense</em>{% endset %}{% set b_lede %}The oral presentation can ask you to trace an algorithm by hand on a grammar you have not seen. Work each exercise on paper first, then type your answer and check it. The same seed always gives the same grammar, so you can share an exercise.{% endset %}
+{% set b_rotate = ['compute FIRST and FOLLOW by hand', 'fill the LL(1) table cell by cell', 'trace a leftmost derivation', 'close an LR(0) item set', 'same seed → same exercise'] %}{% set b_ticker = ['GET /practice/new', 'POST /practice/check', '4 kinds of exercise', '3 difficulty levels', 'answers checked by the real algorithms'] %}{% set b_extra = "" %}
+{% include "_banner.html" %}
 
 <section class="card">
   <div class="row" style="margin-top:0">
@@ -101,6 +102,7 @@ $("#checkBtn").addEventListener("click", async () => {
     h("div", { class: "verdict" }, h("span", { class: "pill " + (s.correct === s.total ? "yes" : "no") }, `${s.correct} of ${s.total} correct`)),
     h("table", { class: "data" }, r.data.items.map(i => h("tr", {}, h("td", { class: i.ok ? "ok" : "bad" }, i.ok ? "✓" : "✗"), h("td", { class: "left mono" }, i.label), h("td", { class: "left" }, i.message || "")))));
   $("#solBtn").disabled = false;
+  if (s.correct === s.total && window.celebrate) window.celebrate();
 });
 $("#solBtn").addEventListener("click", () => {
   const box = $("#solution"); if (!last) return;

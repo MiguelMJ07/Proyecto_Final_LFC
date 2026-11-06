@@ -1,8 +1,9 @@
 {% extends "_layout.html" %}
 {% block title %}Syntax-directed definitions{% endblock %}
 {% block content %}
-<h1>Syntax-directed definitions</h1>
-<p class="lede">An SDD is stored as data: a grammar, an attribute table and one list of semantic rules per production. The evaluator parses the string, builds the dependency graph of the parse tree, orders it topologically and evaluates. If the graph has a cycle, the SDD is circular and evaluation stops.</p>
+{% set b_theme = "sdd" %}{% set b_kicker = "Stage 4 · Item 3" %}{% set b_title %}Syntax-directed <em>definitions</em>{% endset %}{% set b_lede %}An SDD is stored as data: a grammar, an attribute table and one list of semantic rules per production. The evaluator parses the string, builds the dependency graph of the parse tree, orders it topologically and evaluates. If the graph has a cycle, the SDD is circular and evaluation stops.{% endset %}
+{% set b_rotate = ['synthesized: S.val = L.val + D.s', 'inherited: L.pos flows from the left', 'dependency graph → topological order', 'a cycle means a circular SDD', 'Luhn check digit, step by step'] %}{% set b_ticker = ['POST /sdd/evaluate', 'POST /sdd/describe', 'GET /sdd/presets', 'POST /export/latex/sdd', 'S-attributed · L-attributed · neither'] %}{% set b_extra = "" %}
+{% include "_banner.html" %}
 
 <section class="card">
   <div class="grid2">

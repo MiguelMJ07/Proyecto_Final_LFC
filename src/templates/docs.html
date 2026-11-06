@@ -6,8 +6,9 @@
 .swagger-ui .info .title { font-family: var(--serif); }</style>
 {% endblock %}
 {% block content %}
-<h1>API documentation</h1>
-<p class="lede">Every endpoint of the server, with an example you can run from here. The description comes from <a href="/openapi.json"><code>/openapi.json</code></a>.</p>
+{% set b_theme = "docs" %}{% set b_kicker = "Extra · OpenAPI 3" %}{% set b_title %}API <em>documentation</em>{% endset %}{% set b_lede %}Every endpoint of the server, with an example you can run from here. The description comes from <a href="/openapi.json"><code>/openapi.json</code></a>.{% endset %}
+{% set b_rotate = ['every route is described and runnable', 'try it out without Postman', 'JSON in, JSON out, errors with HTTP 400', 'works offline: Swagger UI is bundled'] %}{% set b_ticker = ['GET /openapi.json', 'GET /health', 'GET /api', 'POST /convert', 'POST /minimize', 'POST /grammar/parse', 'POST /sdd/evaluate'] %}{% set b_extra = "" %}
+{% include "_banner.html" %}
 <div id="swagger"></div>
 {% endblock %}
 {% block scripts %}

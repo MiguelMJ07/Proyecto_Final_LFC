@@ -1,13 +1,23 @@
 {% extends "_layout.html" %}
 {% block title %}Home{% endblock %}
 {% block content %}
-<h1>One server for the whole course</h1>
-<p class="lede">Four stages share the same Flask server. A regular language can start as a grammar, become an NFA, a DFA and a minimal DFA; a context-free grammar gets parsed and its attributes evaluated. Each stage is an endpoint and a page.</p>
-
-<div class="derive" aria-label="A derivation">
-  S &rArr; A B &rArr; <span class="m">a</span> A B &rArr; a <span class="m">d</span> B &rArr; a d <span class="m">b</span> B <span class="m">c</span> &rArr; a d b c
-  <div class="muted" style="font:13px var(--sans)">A leftmost derivation of <code>adbc</code> in the grammar S → AB, A → aA | d, B → bBc | e. The marked terminals are the ones each step produces.</div>
+{% set b_theme = "hub" %}{% set b_kicker = "One Flask server · four stages" %}
+{% set b_title %}One server for the <em>whole course</em>{% endset %}
+{% set b_lede %}A regular language can start as a grammar, become an NFA, a DFA and a minimal DFA. A context-free grammar gets parsed with LL(1) or SLR(1) and its attributes evaluated. Each stage is an endpoint and a page.{% endset %}
+{% set b_rotate = ["POST /grammar/to-nfa  →  POST /convert  →  POST /minimize", "FIRST · FOLLOW · LL(1) · SLR(1)", "annotated parse tree + dependency graph", "practice mode for the oral defense", "every route documented in /docs"] %}
+{% set b_ticker = ["Aho §4.4 predictive parsing", "LR(0) items and SLR(1) tables", "syntax-directed definitions", "Kozen: CFG → NPDA", "subset construction", "table-filling minimization", "panic-mode recovery", "LaTeX tables for the report", "Swagger / OpenAPI", "saved sessions"] %}
+{% set b_extra %}
+<div class="b-derive" data-derive="S|AB|aAB|adB|adbBc|adbc" aria-label="A leftmost derivation of adbc">S &rArr; AB &rArr; aAB &rArr; adB &rArr; adbBc &rArr; adbc</div>
+<div class="b-stats">
+  <div><b data-count="4">4</b><span>stages</span></div>
+  <div><b data-count="{{ n_endpoints }}">{{ n_endpoints }}</b><span>endpoints</span></div>
+  <div><b data-count="{{ n_pages }}">{{ n_pages }}</b><span>web pages</span></div>
+  <div><b data-count="2">2</b><span>parsers</span></div>
 </div>
+{% endset %}
+{% include "_banner.html" %}
+
+<p class="muted" style="margin:-4px 0 0">A leftmost derivation of <code>adbc</code> in the grammar S → AB, A → aA | d, B → bBc | e plays above; the pipeline below is the course in order.</p>
 
 <div class="pipeline">
 {% for s in stages %}

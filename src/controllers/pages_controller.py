@@ -23,7 +23,9 @@ STAGES = [
 
 @pages_bp.route("/", methods=["GET"])
 def hub():
-    return render_template("hub.html", stages=STAGES)
+    routes = [r for r in current_app.url_map.iter_rules() if r.endpoint != "static"]
+    api = [r for r in routes if not r.rule.endswith("/ui") and r.rule not in ("/", "/docs")]
+    return render_template("hub.html", stages=STAGES, n_endpoints=len(api), n_pages=len(routes) - len(api))
 
 
 @pages_bp.route("/health", methods=["GET"])
