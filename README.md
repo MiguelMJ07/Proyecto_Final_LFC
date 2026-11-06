@@ -14,13 +14,12 @@ endpoint (or a few) and has its own page.
 
 ## Group members
 
-- <Full name 1> (<class number>)
-- <Full name 2>
-- <Full name 3 (optional)>
+- Miguel Muñoz
+- Juan José Sierra
 
 ## Environment
 
-- OS: <fill in, e.g. Windows 11 / Ubuntu 24.04>
+- OS: Windows 11 Pro
 - Python: 3.10 or newer. The full test suite was run on Python 3.11 and 3.13 (3.10 was not run; the code avoids 3.12-only syntax).
 - Flask 3.0.3 or newer, pytest 8.3.3 or newer (`requirements.txt`). No parser generators or parsing libraries are used.
 - Browser pages use `@viz-js/viz` 3.11.0 (Graphviz compiled to WebAssembly, MIT), bundled in `src/static/vendor/`,
