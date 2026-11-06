@@ -81,6 +81,16 @@ def build_spec():
         "/grammar/compare": {"post": _op("Final project: grammars", "Do two regular grammars generate the same language?",
                                          "grammar -> NFA -> DFA over the union of the alphabets -> /minimize/compare.",
                                          _body({"grammars": ["2\nS -> aS bS aA\nA -> b", "2\nS -> aS bS aB\nB -> b"]}))},
+        "/grammar/report": {"post": _op("Final project: grammars", "Plain-text report: exactly what cli/main.py prints",
+                                        "JSON {grammar, inputs, parser, sets, tables, trace}, or text/plain with exactly the stdin of cli/main.py "
+                                        "(flags as query parameters sets, tables, trace). The answer is the program's output.",
+                                        _body({"grammar": EX_GRAMMAR, "inputs": ["d", "adbc", "a"], "parser": "ll1", "sets": True}))},
+        "/grammar/export": {"post": _op("Final project: grammars", "FIRST/FOLLOW, LL(1) or SLR(1) table as CSV or LaTeX",
+                                        "table: sets, ll1, slr1 or all (all only as latex). format: csv or latex. standalone adds a LaTeX preamble.",
+                                        _body({"grammar": EX_GRAMMAR, "table": "sets", "format": "csv"}))},
+        "/grammar/graph": {"post": _op("Final project: grammars", "LR(0) automaton or parse tree as Graphviz DOT or SVG",
+                                       "graph: lr0 or tree (tree needs the field input). format: svg or dot.",
+                                       _body({"grammar": EX_GRAMMAR, "graph": "lr0", "format": "svg"}))},
         "/grammar/ui": {"get": _page("Final project: grammars", "Interactive page")},
         # --- SDD
         "/sdd/presets": {"get": _op("Final project: SDD", "The ready-made SDDs")},

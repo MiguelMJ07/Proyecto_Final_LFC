@@ -21,7 +21,8 @@ class SLR1:
         self.action = {}                              # (state, terminal or $) -> [actions]
         self.goto = {}                                # (state, nonterminal) -> state
         self.conflicts = []
-        self._build_tables()
+        if not self.too_big:                          # a truncated collection has GOTOs to missing states
+            self._build_tables()
         self.is_slr1 = not self.too_big and not self.conflicts
 
     # ------------------------------------------------ CLOSURE / GOTO (4.6.2)
@@ -133,7 +134,6 @@ class SLR1:
 
     # ------------------------------------------------ LR parsing algorithm (4.6.3)
     def parse(self, w, trace=False):
-        g = self.g
         res = {"accepted": False, "tree": None, "trace": [], "error": None, "_root": None}
         if len(w) > MAX_INPUT:
             res["error"] = {"position": 0, "message": f"Input longer than {MAX_INPUT} symbols."}

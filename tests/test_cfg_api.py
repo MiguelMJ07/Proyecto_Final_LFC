@@ -87,7 +87,6 @@ def test_regular_grammar_bridge_reaches_the_earlier_assignments(c):
     dfa = post(c, "/convert", nfa).get_json()
     sim = lambda w: post(c, "/simulate", {"transitions": dfa["transitions"], "initial": dfa["dfaStates"][0],
                                           "accepting": dfa["acceptingStates"], "input": w}).get_json()["accepted"]
-    parse = lambda w: post(c, "/grammar/parse", {"grammar": g, "inputs": [w]}).get_json()
     gl = {w: sim(w) for w in ("ab", "aab", "bab", "abb", "a", "b", "bbab")}
     assert gl == {"ab": True, "aab": True, "bab": True, "abb": False, "a": False, "b": False, "bbab": True}
     assert post(c, "/minimize", dfa).get_json()["cases"][0]["stats"]["statesMinimized"] == 3

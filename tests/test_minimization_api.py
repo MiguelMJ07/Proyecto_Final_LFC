@@ -185,12 +185,12 @@ def test_example_and_ui(client):
 # ---------------------------------------------------------------------------
 # Integración con la Asignación 1: NFA --/convert--> AFD --/minimize--> AFD mínimo
 # ---------------------------------------------------------------------------
-ROOT = os.path.join(os.path.dirname(__file__), "..")
+EXAMPLES = os.path.join(os.path.dirname(__file__), "..", "examples")
 
 
 def test_convert_output_goes_straight_into_minimize(client):
-    # NFA del enunciado de la Asignación 1 (test_request.json).
-    with open(os.path.join(ROOT, "test_request.json")) as f:
+    # NFA del enunciado de la Asignación 1 (examples/test_request.json).
+    with open(os.path.join(EXAMPLES, "test_request.json")) as f:
         nfa = json.load(f)
     dfa = client.post("/convert", json=nfa).get_json()
     assert "alphabet" not in dfa and "initial" not in dfa        # /convert no los devuelve: se deducen
@@ -205,7 +205,7 @@ def test_convert_output_goes_straight_into_minimize(client):
 
 
 def test_minimized_dfa_works_with_simulate(client):
-    with open(os.path.join(ROOT, "test_request.json")) as f:
+    with open(os.path.join(EXAMPLES, "test_request.json")) as f:
         nfa = json.load(f)
     dfa = client.post("/convert", json=nfa).get_json()
     case = client.post("/minimize", json=dfa).get_json()["cases"][0]
@@ -234,7 +234,7 @@ def test_kozen_example_6_5_pipeline(client):
 
 
 def test_nfa_sent_to_minimize_is_rejected_clearly(client):
-    with open(os.path.join(ROOT, "test_request.json")) as f:
+    with open(os.path.join(EXAMPLES, "test_request.json")) as f:
         nfa = json.load(f)
     r = client.post("/minimize", json=nfa)
     assert r.status_code == 400
@@ -243,13 +243,13 @@ def test_nfa_sent_to_minimize_is_rejected_clearly(client):
 
 
 def test_sample_request_files(client):
-    with open(os.path.join(ROOT, "test_minimize.txt")) as f:
+    with open(os.path.join(EXAMPLES, "test_minimize.txt")) as f:
         r = client.post("/minimize?format=text", data=f.read(), content_type="text/plain")
     assert r.get_data(as_text=True) == "(4, 5)\n"
-    with open(os.path.join(ROOT, "test_minimize.json")) as f:
+    with open(os.path.join(EXAMPLES, "test_minimize.json")) as f:
         assert client.post("/minimize", json=json.load(f)).get_json()["output"] == "(4, 5)"
 
 
 def test_assignment1_endpoints_unchanged(client):
-    with open(os.path.join(ROOT, "test_simulate.json")) as f:
+    with open(os.path.join(EXAMPLES, "test_simulate.json")) as f:
         assert client.post("/simulate", json=json.load(f)).get_json() == {"path": ["0137", "247", "58"], "accepted": True}

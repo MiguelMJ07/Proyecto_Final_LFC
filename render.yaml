@@ -1,0 +1,16 @@
+# Render Blueprint: Render reads this file from the GitHub repository and creates the web service.
+# Every push to the repository builds and deploys it again. Steps and explanation: DESPLIEGUE.md.
+services:
+  - type: web
+    name: lfc-formal-languages
+    runtime: python
+    plan: free
+    buildCommand: pip install -r requirements.txt
+    # gunicorn: production WSGI server. 2 worker processes answer requests in parallel; a request that takes
+    # more than 60 s is cut. Render gives the port in $PORT and puts HTTPS in front of it.
+    startCommand: gunicorn --chdir src app:app --bind 0.0.0.0:$PORT --workers 2 --timeout 60
+    # Render calls this URL to know that the service is alive (pages_controller.py).
+    healthCheckPath: /health
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.12.7

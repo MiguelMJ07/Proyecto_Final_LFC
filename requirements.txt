@@ -1,2 +1,4 @@
 Flask==3.0.3
 pytest==8.3.3
+# Production server used by Render (see DESPLIEGUE.md); it does not run on Windows, so it is skipped there.
+gunicorn==23.0.0; sys_platform != "win32"
