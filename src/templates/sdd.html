@@ -131,7 +131,7 @@ function resultCard(x, idx, mainName) {
   function paint() {
     slider.value = k; lab.textContent = `Step ${k} of ${x.order.length}`; prev.disabled = k === 0; next.disabled = k === x.order.length;
     x.order.forEach((s, j) => { const n = byId.get(s.id); if (!n) return; const e = n.querySelector("ellipse"); if (!e) return;
-      e.setAttribute("fill", j < k - 1 ? "#bfe8cb" : j === k - 1 ? "#f5d547" : "#ffffff"); });
+      e.setAttribute("fill", j < k - 1 ? "#e9f9ae" : j === k - 1 ? "#c8f34a" : "#ffffff"); });
     info.textContent = k === 0 ? "Leaves already carry their lexval. Press Next to evaluate the first attribute." :
       (() => { const s = x.order[k - 1]; return `${s.vertex} = ${s.value}    (${s.rule})`; })();
   }

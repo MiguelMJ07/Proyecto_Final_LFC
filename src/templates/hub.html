@@ -2,12 +2,13 @@
 {% block title %}Home{% endblock %}
 {% block content %}
 {% set b_theme = "hub" %}{% set b_kicker = "One Flask server · four stages" %}
-{% set b_title %}One server for the <em>whole course</em>{% endset %}
+{% set b_title %}One server for the whole course{% endset %}
 {% set b_lede %}A regular language can start as a grammar, become an NFA, a DFA and a minimal DFA. A context-free grammar gets parsed with LL(1) or SLR(1) and its attributes evaluated. Each stage is an endpoint and a page.{% endset %}
 {% set b_rotate = ["POST /grammar/to-nfa  →  POST /convert  →  POST /minimize", "FIRST · FOLLOW · LL(1) · SLR(1)", "annotated parse tree + dependency graph", "practice mode for the oral defense", "every route documented in /docs"] %}
 {% set b_ticker = ["Aho §4.4 predictive parsing", "LR(0) items and SLR(1) tables", "syntax-directed definitions", "Kozen: CFG → NPDA", "subset construction", "table-filling minimization", "panic-mode recovery", "LaTeX tables for the report", "Swagger / OpenAPI", "saved sessions"] %}
 {% set b_extra %}
 <div class="b-derive" data-derive="S|AB|aAB|adB|adbBc|adbc" aria-label="A leftmost derivation of adbc">S &rArr; AB &rArr; aAB &rArr; adB &rArr; adbBc &rArr; adbc</div>
+<div class="b-actions"><a class="btn" href="/grammar/ui">Analyze a grammar</a><a class="btn ghost" href="/minimize/ui#nfa">Convert an NFA</a></div>
 <div class="b-stats">
   <div><b data-count="4">4</b><span>stages</span></div>
   <div><b data-count="{{ n_endpoints }}">{{ n_endpoints }}</b><span>endpoints</span></div>
@@ -17,7 +18,7 @@
 {% endset %}
 {% include "_banner.html" %}
 
-<p class="muted" style="margin:-4px 0 0">A leftmost derivation of <code>adbc</code> in the grammar S → AB, A → aA | d, B → bBc | e plays above; the pipeline below is the course in order.</p>
+<p class="muted">The derivation above is a leftmost derivation of <code>adbc</code> in S → AB, A → aA | d, B → bBc | e. The stages below are the course in order.</p>
 
 <div class="pipeline">
 {% for s in stages %}
@@ -31,12 +32,11 @@
 {% endfor %}
 </div>
 
-<div class="grid3" style="margin-top:6px">
-  <a class="stage" style="padding-right:16px" href="/practice/ui"><h2>Practice mode</h2><p>Random grammars to trace by hand, with item-by-item correction. Training for the oral defense.</p></a>
-  <a class="stage" style="padding-right:16px" href="/docs"><h2>API docs</h2><p>Every endpoint with a runnable example (Swagger UI, bundled, works offline).</p></a>
-  <a class="stage" style="padding-right:16px" href="/grammar/ui"><h2>Report tables</h2><p>Download the tables of any analysis as a LaTeX file, ready for the report.</p></a>
+<div class="grid3">
+  <a class="stage" href="/practice/ui"><h2>Practice mode</h2><p>Random grammars to trace by hand, with item-by-item correction. Training for the oral defense.</p></a>
+  <a class="stage" href="/docs"><h2>API docs</h2><p>Every endpoint with a runnable example (Swagger UI, bundled, works offline).</p></a>
+  <a class="stage" href="/grammar/ui"><h2>Report tables</h2><p>Download the tables of any analysis as a LaTeX file, ready for the report.</p></a>
 </div>
-<style>.grid3 .stage::after { display: none; }</style>
 
 <section class="card" style="margin-top:22px">
   <h2>Run the full chain on a regular grammar</h2>

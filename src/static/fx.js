@@ -13,14 +13,26 @@
     items.forEach((el, i) => { el.classList.add("reveal"); el.style.setProperty("--rd", (i % 4) * 70 + "ms"); io.observe(el); });
   }
 
-  // ---- banner: light follows the pointer ----
-  function banners() {
+  // ---- the page title rises word by word ----
+  function titles() {
     if (calm) return;
-    $$("[data-banner]").forEach(b => b.addEventListener("pointermove", e => {
-      const r = b.getBoundingClientRect();
-      b.style.setProperty("--mx", ((e.clientX - r.left) / r.width * 100).toFixed(1) + "%");
-      b.style.setProperty("--my", ((e.clientY - r.top) / r.height * 100).toFixed(1) + "%");
-    }));
+    $$(".banner h1").forEach(h => {
+      let i = 0;
+      (function wrap(n) {
+        Array.from(n.childNodes).forEach(c => {
+          if (c.nodeType === 3) {
+            const f = document.createDocumentFragment();
+            c.textContent.split(/(\s+)/).forEach(t => {
+              if (!t) return;
+              if (/^\s+$/.test(t)) { f.append(t); return; }
+              const w = document.createElement("span"), x = document.createElement("span");
+              w.className = "w"; x.textContent = t; x.style.setProperty("--i", i++); w.append(x); f.append(w);
+            });
+            c.replaceWith(f);
+          } else if (c.nodeType === 1) wrap(c);
+        });
+      })(h);
+    });
   }
 
   // ---- rotating live line in the banner ----
@@ -67,26 +79,13 @@
     });
   }
 
-  // ---- pipeline cards tilt toward the pointer ----
-  function tilt() {
-    if (calm || !matchMedia("(pointer: fine)").matches) return;
-    $$(".pipeline .stage").forEach(c => {
-      c.addEventListener("pointermove", e => {
-        const r = c.getBoundingClientRect(), x = (e.clientX - r.left) / r.width, y = (e.clientY - r.top) / r.height;
-        c.style.setProperty("--ry", ((x - .5) * 7).toFixed(2) + "deg"); c.style.setProperty("--rx", ((.5 - y) * 7).toFixed(2) + "deg");
-        c.style.setProperty("--px", (x * 100).toFixed(0) + "%"); c.style.setProperty("--py", (y * 100).toFixed(0) + "%");
-      });
-      c.addEventListener("pointerleave", () => { c.style.setProperty("--rx", "0deg"); c.style.setProperty("--ry", "0deg"); });
-    });
-  }
-
   // ---- confetti (used by practice mode when every answer is right) ----
   window.celebrate = function () {
     if (calm) return;
     let cv = document.getElementById("confetti");
     if (!cv) { cv = document.createElement("canvas"); cv.id = "confetti"; cv.setAttribute("aria-hidden", "true"); document.body.append(cv); }
     const ctx = cv.getContext("2d"); cv.width = innerWidth; cv.height = innerHeight;
-    const colors = ["#1d4ed8", "#ea580c", "#14b8a6", "#fde047", "#a3e635", "#38bdf8"];
+    const colors = ["#0e1116", "#c8f34a", "#a9d62b", "#ffffff", "#4d5663"];
     const bits = Array.from({ length: 150 }, () => ({
       x: innerWidth / 2 + (Math.random() - .5) * 160, y: innerHeight * .62, vx: (Math.random() - .5) * 15, vy: -8 - Math.random() * 12,
       w: 6 + Math.random() * 7, h: 4 + Math.random() * 6, r: Math.random() * 6, vr: (Math.random() - .5) * .4, c: colors[(Math.random() * colors.length) | 0]
@@ -100,5 +99,5 @@
     })();
   };
 
-  document.addEventListener("DOMContentLoaded", () => { reveal(); banners(); rotators(); derivations(); counters(); tilt(); });
+  document.addEventListener("DOMContentLoaded", () => { titles(); reveal(); rotators(); derivations(); counters(); });
 })();

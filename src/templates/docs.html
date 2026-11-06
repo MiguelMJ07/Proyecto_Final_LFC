@@ -2,8 +2,8 @@
 {% block title %}API docs{% endblock %}
 {% block head %}
 <link rel="stylesheet" href="{{ url_for('static', filename='vendor/swagger/swagger-ui.css') }}">
-<style>.swagger-ui .topbar { display: none; } #swagger { background: #fff; border: 1px solid var(--line); border-radius: 10px; padding: 8px 16px 24px; }
-.swagger-ui .info .title { font-family: var(--serif); }</style>
+<style>.swagger-ui .topbar { display: none; } #swagger { background: #fff; border-radius: 6px; padding: 8px 20px 24px; }
+</style>
 {% endblock %}
 {% block content %}
 {% set b_theme = "docs" %}{% set b_kicker = "Extra · OpenAPI 3" %}{% set b_title %}API <em>documentation</em>{% endset %}{% set b_lede %}Every endpoint of the server, with an example you can run from here. The description comes from <a href="/openapi.json"><code>/openapi.json</code></a>.{% endset %}
