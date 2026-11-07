@@ -20,7 +20,7 @@
 \section{Resumen de la entrega}
 Este informe documenta nuestra entrega del proyecto final. Implementamos el cálculo de FIRST y FOLLOW, un analizador LL(1) con tabla y pila, un analizador SLR(1) y el evaluador de una definición dirigida por la sintaxis (SDD) que usa el grafo de dependencias. Todo el código está en Python.
 
-Dos programas de consola siguen los formatos de entrada y salida del enunciado: \texttt{cli/main.py} para los Items 1 y 2, y \texttt{cli/sdd\_cli.py} para el Item 3. Un servidor Flask ofrece las mismas funciones en páginas web. No usamos generadores de parsers ni librerías que calculen conjuntos FIRST y FOLLOW, autómatas LR o tablas de análisis. Las instrucciones para instalar y ejecutar todo están en el \texttt{README.md}.
+Dos programas de consola siguen los formatos de entrada y salida del enunciado: \texttt{cli/main.py} para los Items 1 y 2, y \texttt{cli/sdd\_\allowbreak{}cli.py} para el Item 3. Un servidor Flask ofrece las mismas funciones en páginas web. No usamos generadores de parsers ni librerías que calculen conjuntos FIRST y FOLLOW, autómatas LR o tablas de análisis. Las instrucciones para instalar y ejecutar todo están en el \texttt{README.md}.
 
 \section{Secciones del libro y estructuras de datos}
 Seguimos a Aho, Lam, Sethi y Ullman, \emph{Compilers: Principles, Techniques, and Tools}, segunda edición. La tabla indica qué sección seguimos en cada parte, dónde está el código y qué estructura de datos usa.
@@ -30,15 +30,15 @@ Seguimos a Aho, Lam, Sethi y Ullman, \emph{Compilers: Principles, Techniques, an
 Parte & Libro & Código & Estructura de datos \\
 \midrule
 \endhead
-FIRST y FOLLOW & 4.4.2 & \texttt{cfg\_grammar.py} & Un conjunto de símbolos para cada símbolo y cada no terminal. Se repite el cálculo hasta que ningún conjunto crece. \\
-Condición LL(1) & 4.4.3 & \texttt{check\_ll1\_conditions} en \texttt{cfg\_ll1.py} & Lista de violaciones, una por cada par de producciones del mismo no terminal. \\
+FIRST y FOLLOW & 4.4.2 & \texttt{cfg\_\allowbreak{}grammar.py} & Un conjunto de símbolos para cada símbolo y cada no terminal. Se repite el cálculo hasta que ningún conjunto crece. \\
+Condición LL(1) & 4.4.3 & \texttt{check\_\allowbreak{}ll1\_\allowbreak{}conditions} en \texttt{cfg\_\allowbreak{}ll1.py} & Lista de violaciones, una por cada par de producciones del mismo no terminal. \\
 Tabla predictiva & algoritmo 4.31 & clase \texttt{LL1} & Diccionario $(A,a)\to$ lista de producciones. Una celda con más de una producción es un conflicto. \\
 Analizador predictivo & 4.4.4, algoritmo 4.34 & \texttt{LL1.parse} & Pila de símbolos. \\
-Ítems LR(0), CLOSURE y GOTO & 4.6.2 & \texttt{cfg\_slr1.py} & Un ítem es un par (producción, posición del punto). Un estado es un conjunto inmutable de ítems. Las transiciones están en un diccionario (estado, símbolo)$\to$estado. La gramática se aumenta con $S'\to S$. \\
-ACTION y GOTO & 4.6.4 & \texttt{SLR1.\_build\_tables} & Diccionario (estado, terminal)$\to$ lista de acciones, y lista de conflictos. \\
+Ítems LR(0), CLOSURE y GOTO & 4.6.2 & \texttt{cfg\_\allowbreak{}slr1.py} & Un ítem es un par (producción, posición del punto). Un estado es un conjunto inmutable de ítems. Las transiciones están en un diccionario (estado, símbolo)$\to$estado. La gramática se aumenta con $S'\to S$. \\
+ACTION y GOTO & 4.6.4 & \texttt{SLR1.\_\allowbreak{}build\_\allowbreak{}tables} & Diccionario (estado, terminal)$\to$ lista de acciones, y lista de conflictos. \\
 Algoritmo de análisis LR & 4.6.3 & \texttt{SLR1.parse} & Pila de pares (símbolo, estado). \\
-SDD y árbol anotado & 5.1.1, 5.1.2 & \texttt{cfg\_sdd.py}, \texttt{cfg\_tree.py} & El SDD son datos: gramática, tabla de atributos y lista de reglas por producción. Cada nodo del árbol guarda su símbolo, su producción, sus hijos y sus atributos. \\
-Grafo de dependencias y orden de evaluación & 5.2.1, 5.2.2 & \texttt{build\_graph}, \texttt{topological\_order} & Lista de aristas (atributo usado $\to$ atributo definido). El orden sale del algoritmo de Kahn. Un ciclo se informa y detiene la evaluación. \\
+SDD y árbol anotado & 5.1.1, 5.1.2 & \texttt{cfg\_\allowbreak{}sdd.py}, \texttt{cfg\_\allowbreak{}tree.py} & El SDD son datos: gramática, tabla de atributos y lista de reglas por producción. Cada nodo del árbol guarda su símbolo, su producción, sus hijos y sus atributos. \\
+Grafo de dependencias y orden de evaluación & 5.2.1, 5.2.2 & \texttt{build\_\allowbreak{}graph}, \texttt{topological\_\allowbreak{}order} & Lista de aristas (atributo usado $\to$ atributo definido). El orden sale del algoritmo de Kahn. Un ciclo se informa y detiene la evaluación. \\
 Clasificación S y L-atribuida & 5.2.3, 5.2.4 & \texttt{SDD.classify} & Recorre las reglas y revisa de qué atributos depende cada atributo heredado. \\
 \bottomrule
 \end{longtable}
