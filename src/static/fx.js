@@ -13,6 +13,49 @@
     items.forEach((el, i) => { el.classList.add("reveal"); el.style.setProperty("--rd", (i % 4) * 70 + "ms"); io.observe(el); });
   }
 
+  // ---- header depth: the light, the symbols and the cube follow the pointer ----
+  function banners() {
+    if (calm) return;
+    $$("[data-banner]").forEach(b => {
+      b.addEventListener("pointermove", e => {
+        const r = b.getBoundingClientRect(), x = (e.clientX - r.left) / r.width, y = (e.clientY - r.top) / r.height;
+        b.style.setProperty("--mx", x.toFixed(3)); b.style.setProperty("--my", y.toFixed(3));
+        b.style.setProperty("--px", (x - .5).toFixed(3)); b.style.setProperty("--py", (y - .5).toFixed(3));
+      });
+      b.addEventListener("pointerleave", () => { b.style.setProperty("--px", 0); b.style.setProperty("--py", 0); });
+    });
+  }
+
+  // ---- symbols of the subject scattered on the ground and on the rail (same layout on every visit) ----
+  function symbols() {
+    const SYMS = ["ε", "δ", "Σ", "λ", "π", "∅", "∈", "→", "⇒", "∗", "$", "Γ", "∪", "ω", "φ", "⊢", "{ }", "ℓ"];
+    const INK = "rgba(14,17,22,.085)", LIME = "rgba(150,196,20,.42)", RAIL = ["rgba(200,243,74,.28)", "rgba(255,255,255,.1)"];
+    let seed = 11; const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+    function fill(host, cols, rows, pick, size) {
+      let k = 0;
+      for (let r = 0; r < rows; r++) for (let c = 0; c < cols; c++) {
+        if (rnd() < .22) continue;
+        const s = document.createElement("span"); s.className = "sym"; s.textContent = SYMS[(k++ * 7 + r * 3 + c) % SYMS.length];
+        s.style.left = ((c + .15 + rnd() * .7) / cols * 100).toFixed(1) + "%"; s.style.top = ((r + .1 + rnd() * .7) / rows * 100).toFixed(1) + "%";
+        s.style.setProperty("--s", (size[0] + rnd() * (size[1] - size[0])).toFixed(2) + "rem");
+        s.style.setProperty("--r", ((rnd() - .5) * 50).toFixed(0) + "deg"); s.style.setProperty("--d", (10 + rnd() * 50).toFixed(0));
+        s.style.setProperty("--t", (7 + rnd() * 8).toFixed(1) + "s"); s.style.setProperty("--w", "-" + (rnd() * 9).toFixed(1) + "s");
+        s.style.setProperty("--c", pick());
+        host.append(s);
+      }
+    }
+    const bg = document.createElement("div"); bg.className = "sym-bg"; bg.setAttribute("aria-hidden", "true");
+    fill(bg, 10, 6, () => (rnd() < .22 ? LIME : INK), [2.2, 6]);
+    document.body.prepend(bg);
+    const rail = document.querySelector(".rail");
+    if (rail) { const h = document.createElement("div"); h.className = "sym-rail"; h.setAttribute("aria-hidden", "true"); fill(h, 3, 4, () => RAIL[rnd() < .6 ? 0 : 1], [1.8, 3.6]); rail.append(h); }
+    if (calm) return;
+    addEventListener("pointermove", e => {
+      const root = document.documentElement.style;
+      root.setProperty("--gx", (e.clientX / innerWidth - .5).toFixed(3)); root.setProperty("--gy", (e.clientY / innerHeight - .5).toFixed(3));
+    }, { passive: true });
+  }
+
   // ---- the page title rises word by word ----
   function titles() {
     if (calm) return;
@@ -99,5 +142,5 @@
     })();
   };
 
-  document.addEventListener("DOMContentLoaded", () => { titles(); reveal(); rotators(); derivations(); counters(); });
+  document.addEventListener("DOMContentLoaded", () => { symbols(); banners(); titles(); reveal(); rotators(); derivations(); counters(); });
 })();
