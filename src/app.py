@@ -8,6 +8,8 @@
 # Development: `python src/app.py`. Production (Render, see DESPLIEGUE.md): `gunicorn --chdir src app:app`,
 # which imports `app` from this file and never runs the block at the end.
 import os
+import sys
+import threading
 
 from flask import Flask
 
@@ -21,6 +23,12 @@ from controllers.pages_controller import pages_bp
 from controllers.practice_controller import practice_bp
 from controllers.sdd_controller import sdd_bp
 from controllers.sessions_controller import sessions_bp
+
+# An annotated tree is nested about 3 levels per input symbol and the JSON encoder recurses once per level: with
+# Python's default limit (1000), /sdd/evaluate failed at about 300 digits and /grammar/parse at about 450 symbols.
+# The development server answers each request in a new thread, which on Windows gets a 1 MB stack, so give them more.
+sys.setrecursionlimit(20000)
+threading.stack_size(32 * 1024 * 1024)
 
 app = Flask(__name__)
 # Keep the key order of the JSON responses instead of sorting alphabetically.

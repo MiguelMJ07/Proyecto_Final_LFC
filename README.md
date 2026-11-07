@@ -20,8 +20,8 @@ endpoint (or a few) and has its own page.
 
 ## Environment
 
-- OS: Windows 11 Pro
-- Python: 3.9 or newer (developed with Python 3.12; the tests also pass with Python 3.9.6 on macOS)
+- OS: Windows 11 Pro (version 10.0.26300)
+- Python: 3.9 or newer (developed with Python 3.12; the tests also pass with Python 3.9.6 on macOS and with Python 3.11.9 on Windows 11)
 - Flask 3.0.3 and pytest 8.3.3 (`requirements.txt`); gunicorn 23.0.0 only for the deployment (not on Windows).
   No parser generators or parsing libraries are used: only the Python standard library.
 - Browser pages use `@viz-js/viz` 3.11.0 (Graphviz compiled to WebAssembly, MIT), bundled in `src/static/vendor/`,
@@ -50,10 +50,10 @@ server (`GET /health`).
   then open `http://<IP of the computer>:5000` on the other device. With `HOST=0.0.0.0` the Flask debugger is off by
   default, because it would let anyone on the network run code on the computer.
 - **Internet:** `render.yaml` deploys the server on Render with gunicorn (production WSGI server, 2 worker processes)
-  behind HTTPS, with `/health` as health check; every push deploys again. Public address: <fill in after deploying>.
+  behind HTTPS, with `/health` as health check; every push deploys again.
   Steps, the type of connection and its benefits are explained (in Spanish) in [DESPLIEGUE.md](DESPLIEGUE.md).
 
-Tests: `pytest tests/` (1079 tests: the two earlier assignments plus the new stages; includes a property test that
+Tests: `pytest tests/` (1086 tests: the two earlier assignments plus the new stages; includes a property test that
 checks both parsers against a brute-force enumeration of the language of random grammars, and a test that runs
 `cli/main.py` and checks that `POST /grammar/report` gives exactly the same output).
 
@@ -171,7 +171,7 @@ one-state NPDA that accepts by empty stack built from a grammar in Lecture 24.
 - The SDD is data: a grammar, an attribute table, and for each production a list of rules `X.attr = expression`. A rule's
   dependencies are derived from the references it contains. The evaluator never assumes a traversal order: it builds the
   dependency graph of the actual parse tree, orders it with Kahn's algorithm and evaluates. A cycle is reported with the
-  attributes that form it. Every loop over the tree is iterative, so deep inputs do not hit Python's recursion limit.
+  attributes that form it. Every loop over the tree is iterative, and `src/app.py` raises the recursion limit (and the thread stack) so that the JSON of a deep tree can be sent: 400 digits for the SDD and 2000 symbols for a grammar work through the web as they do on the command line.
 - Rules use a restricted expression language (arithmetic, comparisons, `and/or/not`, `a if c else b`, `max min abs int str len`)
   that is parsed and interpreted, never passed to `eval`, so an SDD can be edited from the browser safely.
 - Limits that keep the server responsive: 20,000 characters per grammar, 400 productions, 400 LR(0) states, 200 strings per
@@ -272,7 +272,9 @@ In PowerShell use `curl.exe` and put the JSON in a file (`-d "@body.json"`), bec
   `/grammar/graph` (`cfg_protocol.py`, now shared with `cli/main.py`, and `cfg_export.py`) with their tests; the
   deployment files (`render.yaml`, gunicorn, `run_options` in `src/app.py`, `DESPLIEGUE.md`); and a CSS fix for phones.
 - **Claude (Anthropic), in Claude Code**, November 2026, to redesign the look of the web interface (`app.css`, `fx.js`,
-  the HTML templates: colours, type, layout and animations) and to resolve the Git merge conflicts between the branches.
+  the HTML templates: colours, type, layout and animations), to resolve the Git merge conflicts between the branches, to write the
+  plain-language explanations of LL(1) and SLR(1) failures (`cfg_explain.py`, an extra that only reads the results of the algorithms),
+  to audit the repository against the assignment and to fix the HTTP 500 that deep parse trees caused in the web layer.
   No algorithm was changed: the group checked that the tests and the examples of the assignment give the same output.
 - **Generative AI assistant (Claude)**, throughout the project, as a study support: to clarify concepts of the books
   (Aho et al., Kozen) and to ask how to turn those concepts into code. The group read the sections of the book, worked
