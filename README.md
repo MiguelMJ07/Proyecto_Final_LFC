@@ -148,16 +148,16 @@ Aho, Lam, Sethi, Ullman, *Compilers: Principles, Techniques, and Tools*, 2nd ed.
 | LL(1) condition (three conditions on each pair A → α \| β) | Section 4.4.3 | `check_ll1_conditions` in `cfg_ll1.py` |
 | Predictive parsing table | Algorithm 4.31 | `LL1.__init__` |
 | Table-driven predictive parser | Section 4.4.4, Algorithm 4.34 and Fig. 4.20 | `LL1.parse` |
-| LR(0) items, CLOSURE, GOTO, augmented grammar | Section 4.6.2 | `cfg_slr1.py` |
-| LR parsing algorithm | Section 4.6.3 | `SLR1.parse` |
-| ACTION/GOTO from the collection and FOLLOW; conflicts | Sections 4.6.4 and 4.5.4 | `SLR1._build_tables` |
+| LR(0) items, CLOSURE, GOTO, augmented grammar | Section 4.6.2 (CLOSURE, Fig. 4.32; canonical collection, Fig. 4.33) | `cfg_slr1.py` |
+| LR parsing algorithm | Section 4.6.3, Algorithm 4.44 and Fig. 4.36 | `SLR1.parse` |
+| ACTION/GOTO from the collection and FOLLOW; conflicts | Section 4.6.4 (Algorithm 4.46) and Section 4.5.4 | `SLR1._build_tables` |
 | SDD, synthesized/inherited attributes, annotated tree | Sections 5.1.1 and 5.1.2 | `cfg_sdd.py` |
 | Dependency graph and topological evaluation order | Sections 5.2.1 and 5.2.2 | `build_graph`, `topological_order` |
 | S-attributed / L-attributed classification | Sections 5.2.3 and 5.2.4 | `SDD.classify` |
 
-Checked against the text: Section 4.4 (the attached `Cap4.pdf`, pages 192-232) for FIRST/FOLLOW, the LL(1) condition,
-Algorithms 4.31 and 4.34. Sections 4.5, 4.6 and 5.1-5.2 are not in that file; their numbering comes from the assignment, so
-**check the SLR(1) and SDD parts and their algorithm numbers against your copy of the book before citing them in the report.**
+Checked against the text of the 2nd edition: every section number in the table (4.4.2 to 4.4.4, 4.5.4, 4.6.2 to 4.6.4, 5.1.1,
+5.1.2 and 5.2.1 to 5.2.4), Algorithms 4.31, 4.34, 4.44 and 4.46, and Figures 4.20, 4.32, 4.33, 4.36 and 5.1 match the headings
+of the book (6 November 2026, using a PDF copy of the book converted to text).
 
 Connection with Kozen, *Automata and Computability* (the lectures provided): the grammars (21.1) and (21.2) of Lecture 21 are
 included as examples (`/grammar/ui`), and the stack discipline of the predictive parser is the deterministic form of the
