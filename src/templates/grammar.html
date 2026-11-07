@@ -151,6 +151,13 @@ function renderSets(s, nts) {
   $("#setsTrace").textContent = f.concat([""], w).join("\n");
 }
 
+// plain-language reasons for each violation or conflict (extra: what to say at the oral defense)
+function explainBox(box, title, list) {
+  if (!list || !list.length) return;
+  box.append(h("h3", {}, title), h("ul", { class: "why" }, list.map(e => h("li", {}, e.text,
+    e.items ? h("details", {}, h("summary", {}, `Items of state ${e.state}`), h("pre", {}, e.items.join("\n"))) : null))));
+}
+
 function renderLL1(d) {
   const L = d.ll1, box = $("#ll1Out"); box.replaceChildren();
   box.append(h("div", { class: "verdict" }, h("span", { class: "pill " + (d.isLL1 ? "yes" : "no") }, d.isLL1 ? "The grammar is LL(1)" : "The grammar is not LL(1)")));
@@ -158,6 +165,7 @@ function renderLL1(d) {
     box.append(h("table", { class: "rules" }, h("tr", {}, h("th", {}, "Condition"), h("th", {}, "Productions"), h("th", {}, "Why")),
       L.violations.map(v => h("tr", {}, h("td", {}, v.condition), h("td", { class: "mono" }, v.productions.map(short).join("   |   ")), h("td", {}, v.message)))));
   }
+  explainBox(box, "Why it is not LL(1)", L.explanations);
   const conflictKeys = new Set(L.tableConflicts.map(c => c.nonterminal + "," + c.symbol));
   const t = L.table;
   box.append(h("h3", {}, "Predictive parsing table M"), h("div", { class: "scroll" }, h("table", { class: "data" },
@@ -180,6 +188,7 @@ async function renderSLR(d) {
   if (S.tooBig) { box.append(h("div", { class: "err" }, "The automaton is too large to build here.")); return; }
   if (S.conflicts.length) box.append(h("table", { class: "rules" }, h("tr", {}, h("th", {}, "State"), h("th", {}, "On"), h("th", {}, "Conflict"), h("th", {}, "Actions")),
     S.conflicts.map(c => h("tr", {}, h("td", {}, c.state), h("td", { class: "mono" }, c.symbol), h("td", {}, c.type), h("td", { class: "mono" }, c.actions.map(short).join("   |   "))))));
+  explainBox(box, "Why it is not SLR(1)", S.explanations);
   const bad = new Set(S.conflicts.map(c => c.state + "," + c.symbol));
   const t = S.table;
   box.append(h("h3", {}, "ACTION and GOTO"), h("div", { class: "scroll" }, h("table", { class: "data" },

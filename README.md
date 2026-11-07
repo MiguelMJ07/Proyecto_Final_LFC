@@ -253,6 +253,7 @@ In PowerShell use `curl.exe` and put the JSON in a file (`-d "@body.json"`), bec
 | Feature | Where | Notes |
 |---|---|---|
 | Panic-mode error recovery (Aho Section 4.4.5) | `POST /grammar/parse` with `"recover": true`, LL(1) only | Synchronizing set = FOLLOW. Blank entry: skip the input symbol; synch entry: pop the nonterminal; terminal mismatch: pop it. At `$` with a blank entry the nonterminal is popped (our addition, so recovery always ends). No tree is built; the string is accepted only if no error was reported. |
+| Why it fails | `explanations` in `POST /grammar/ll1`, `/slr1` and `/grammar/analyze`; `cfg_explain.py`; shown in `/grammar/ui` | Plain-language reason for each LL(1) violation (Section 4.4.3) and SLR(1) conflict (Section 4.6.4): the productions and sets involved, the stack prefix that reaches the conflicting state, and the usual cause (left recursion, missing left factoring). It only reads the results of the algorithms; it never changes a verdict. |
 | Compare two regular grammars | `POST /grammar/compare`, tab in `/grammar/ui` | Right-linear grammars to NFA, DFA over the union alphabet, then `/minimize/compare`. Returns a shortest counterexample. |
 | Practice mode | `/practice/ui`, `GET /practice/new`, `POST /practice/check` | Generated exercises (FIRST/FOLLOW, LL(1) table, derivation, LR(0) closure). Same seed gives the same exercise, so the server stores nothing. |
 | LaTeX tables for the report | `POST /export/latex/grammar`, `/export/latex/sdd` (add `?download=1`) | Compiled with `pdflatex` in the tests when it is installed. |
