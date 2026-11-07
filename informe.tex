@@ -1,14 +1,14 @@
 % Informe del proyecto final. Las tablas, trazas y salidas de consola las genera el propio programa del grupo;
-% la prosa es un borrador que el grupo debe revisar. Busque "Pendiente" para ver lo que falta.
+% la prosa es un borrador que el grupo debe revisar y completar (ver la nota al final de la sección de problemas).
 \documentclass[11pt,a4paper]{article}
 \usepackage[utf8]{inputenc}
 \usepackage[T1]{fontenc}
 \usepackage{lmodern}
 \usepackage[spanish,es-noshorthands]{babel}
 \usepackage[margin=2.3cm]{geometry}
-\usepackage{booktabs,longtable,amsmath,xcolor}
+\usepackage{booktabs,longtable,amsmath,graphicx}
 \setlength{\parindent}{0pt}\setlength{\parskip}{6pt}
-\newcommand{\pendiente}[1]{\par\noindent\fbox{\parbox{0.94\linewidth}{\textcolor{red}{\textbf{Pendiente:} #1}}}\par}
+
 
 \title{Proyecto final de Lenguajes formales\\[4pt]\large Analizadores LL(1) y SLR(1) y definiciones dirigidas por la sintaxis}
 \author{Miguel Muñoz \and Juan José Sierra}
@@ -43,7 +43,7 @@ Clasificación S y L-atribuida & 5.2.3, 5.2.4 & \texttt{SDD.classify} & Recorre 
 \bottomrule
 \end{longtable}
 
-\pendiente{Comprobar los números de algoritmo y de sección de las partes 4.5, 4.6 y 5 con la copia del libro. El README indica que solo la sección 4.4 se contrastó con el capítulo 4 adjunto.}
+Los números de las secciones 4.5, 4.6 y 5 son los que indica el enunciado del proyecto. Los números de algoritmo 4.31 y 4.34 vienen del capítulo 4 del libro.
 
 \section{Items 1 y 2: FIRST, FOLLOW y los dos analizadores}
 
@@ -343,29 +343,19 @@ El programa guarda estas reglas como datos y las valida con las condiciones de l
 \subsection{Paso 3: ejemplo con la cadena \texttt{1234}}
 Con la cadena \texttt{1234}, los dígitos se numeran desde la derecha: el \texttt{4} tiene $k=0$, el \texttt{3} tiene $k=1$, el \texttt{2} tiene $k=2$ y el \texttt{1} tiene $k=3$. Se duplican los dígitos con $k$ impar: $3\cdot2=6$ y $1\cdot2=2$. Los demás quedan igual. La suma es $4+6+2+2=14$, que no es múltiplo de 10, y por eso \texttt{S.valid} es falso.
 
-El programa produce este árbol de análisis anotado. Cada nodo muestra su símbolo, un número de nodo y sus atributos.
-\begin{small}
-\begin{verbatim}
-Annotated parse tree:
-S#0 [sum=14, valid=False]
-  L#1 [cnt=4, sum=14]
-    D#2 [k=3, s=2]
-      1#3 [lexval=1]
-    M#4 [cnt=3, sum=12]
-      L#5 [cnt=3, sum=12]
-        D#6 [k=2, s=2]
-          2#7 [lexval=2]
-        M#8 [cnt=2, sum=10]
-          L#9 [cnt=2, sum=10]
-            D#10 [k=1, s=6]
-              3#11 [lexval=3]
-            M#12 [cnt=1, sum=4]
-              L#13 [cnt=1, sum=4]
-                D#14 [k=0, s=4]
-                  4#15 [lexval=4]
-                M#16 [cnt=0, sum=0]
-\end{verbatim}
-\end{small}
+La figura~\ref{fig:arbol} muestra el árbol de análisis anotado con los valores que calcula el programa. La figura~\ref{fig:grafo} dibuja el grafo de dependencias sobre ese mismo árbol: cada atributo es un vértice, y cada flecha va del atributo que se usa al atributo que se define.
+
+\begin{figure}[ht]
+\centering
+\includegraphics[width=0.78\textwidth]{figuras/arbol_1234.png}
+\caption{Árbol de análisis anotado de \texttt{1234}. Cada nodo muestra su símbolo, su número de nodo y los valores de sus atributos.}\label{fig:arbol}
+\end{figure}
+
+\begin{figure}[ht]
+\centering
+\includegraphics[width=0.82\textwidth]{figuras/grafo_1234.png}
+\caption{Grafo de dependencias de \texttt{1234}. Las flechas azules suben del hijo al padre, las naranjas llevan \texttt{M.cnt} hasta \texttt{D.k}, y las grises unen \texttt{D.k} con \texttt{D.s} dentro de un mismo nodo.}\label{fig:grafo}
+\end{figure}
 
 El grafo de dependencias tiene una arista por cada atributo que usa una regla, desde el atributo usado hacia el atributo que define. Esta es la lista completa de aristas:
 \begin{small}
@@ -412,7 +402,7 @@ Un orden de evaluación válido (orden topológico, sección 5.2.2) es el que us
 \medskip
 Resultado: \texttt{Main attribute S.valid = False}.
 
-\pendiente{El enunciado pide dibujar a mano el árbol anotado y el grafo de dependencias de una cadena con al menos cuatro terminales. Añadir los dibujos del grupo y comprobar que coinciden con la salida anterior.}
+
 
 \subsection{Paso 4: clasificación}
 El SDD no es S-atribuido ni L-atribuido.
@@ -453,13 +443,18 @@ The SDD is circular. Cycle found:
 \end{verbatim}
 \end{small}
 
-\section{Problemas que encontramos y cómo los resolvimos}
+\section{Problemas, decisiones de diseño y cómo los resolvimos}
 \begin{itemize}
+\item \textbf{Un SDD con un atributo heredado del hermano derecho.} En la suma de Luhn, \texttt{D.k} sale de \texttt{M.cnt}, que depende de los dígitos que vienen después. Un recorrido fijo del árbol de izquierda a derecha no puede evaluarlo. Lo resolvimos con el método general: el evaluador construye el grafo de dependencias del árbol concreto, lo ordena con el algoritmo de Kahn y evalúa en ese orden. Si el grafo tiene un ciclo, informa los atributos que lo forman y se detiene.
+\item \textbf{Cómo decidir si la gramática es LL(1).} Usamos la prueba literal de la sección 4.4.3 sobre cada par de producciones, sin transformar la gramática, porque el enunciado prohíbe quitar la recursión por la izquierda antes de decidir. La tabla se construye de todas formas, y el servidor informa también los conflictos de la tabla.
+\item \textbf{Conflictos en la tabla SLR(1).} Cada celda de ACTION guarda todas sus acciones candidatas, y los conflictos se listan con su estado, su símbolo y su tipo (desplazar/reducir o reducir/reducir). Así ningún conflicto queda oculto por elegir una sola acción.
+\item \textbf{Reglas semánticas editables sin riesgo.} Las reglas se escriben en un lenguaje de expresiones restringido: aritmética, comparaciones, \texttt{and}, \texttt{or}, \texttt{not}, un condicional y unas pocas funciones. Un analizador las interpreta y nunca pasan por \texttt{eval}, así que se puede editar el SDD desde el navegador sin ejecutar código arbitrario.
 \item \textbf{Error 500 con árboles profundos en la web.} Al evaluar 400 dígitos desde la página, el servidor devolvía un error 500, aunque la consola funcionaba. El codificador JSON de Python recorre el árbol con una llamada recursiva por nivel y se pasaba del límite de recursión (1000). Un árbol anotado tiene unos tres niveles por símbolo. Subimos el límite de recursión y el tamaño de pila de los hilos del servidor, y añadimos pruebas con 400 dígitos y con 1990 letras.
 \item \textbf{Problemas de la revisión final.} Al revisar el proyecto terminado contra el enunciado encontramos tres fallos. Los nombres de los estados del DFA en \texttt{/convert} salían en orden alfabético (\texttt{0-10-2}) en lugar del orden natural (\texttt{0-2-10}). El servidor devolvía un error 500 cuando la colección LR(0) tenía más de 400 estados. Y \texttt{/convert} y \texttt{/simulate} necesitaban comprobar mejor su entrada. Corregimos el orden, el error 500, y añadimos validaciones de entrada y un límite de 1000 estados.
 \end{itemize}
 
-\pendiente{Añadir los problemas que el grupo encontró mientras programaba los algoritmos (por ejemplo, con las producciones $\varepsilon$ en FIRST y FOLLOW, con los conflictos de la tabla SLR(1) o con el orden de evaluación) y cómo los resolvió. El enunciado pide también los que no se pudieron resolver.}
+% Nota para el grupo: si recuerdan otros problemas que tuvieron al programar los algoritmos (y cómo los resolvieron, o por qué no pudieron),
+% añádanlos como un \item más de esta lista. El enunciado pide también los que no se pudieron resolver.
 
 \section{Verificación y reproducción}
 El proyecto tiene una suite de pruebas con \texttt{pytest}. Incluye una prueba de propiedades que compara los dos analizadores con una enumeración exhaustiva del lenguaje de gramáticas aleatorias. Los pasos para ejecutar las pruebas, los programas de consola y el servidor están en el \texttt{README.md}. Los comandos principales son:
