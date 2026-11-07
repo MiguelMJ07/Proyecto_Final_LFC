@@ -15,14 +15,13 @@ endpoint (or a few) and has its own page.
 
 ## Group members
 
-- <Full name 1> (<class number>)
-- <Full name 2>
-- <Full name 3 (optional)>
+- Miguel Muñoz
+- Juan José Sierra
 
 ## Environment
 
-- OS: <fill in, e.g. Windows 11 / Ubuntu 24.04>
-- Python: 3.9 or newer (developed with Python 3.12; the tests also pass with Python 3.9.6 on macOS)
+- OS: Windows 11 Pro (version 10.0.26300)
+- Python: 3.9 or newer (developed with Python 3.12; the tests also pass with Python 3.9.6 on macOS and with Python 3.11.9 on Windows 11)
 - Flask 3.0.3 and pytest 8.3.3 (`requirements.txt`); gunicorn 23.0.0 only for the deployment (not on Windows).
   No parser generators or parsing libraries are used: only the Python standard library.
 - Browser pages use `@viz-js/viz` 3.11.0 (Graphviz compiled to WebAssembly, MIT), bundled in `src/static/vendor/`,
@@ -51,10 +50,10 @@ server (`GET /health`).
   then open `http://<IP of the computer>:5000` on the other device. With `HOST=0.0.0.0` the Flask debugger is off by
   default, because it would let anyone on the network run code on the computer.
 - **Internet:** `render.yaml` deploys the server on Render with gunicorn (production WSGI server, 2 worker processes)
-  behind HTTPS, with `/health` as health check; every push deploys again. Public address: <fill in after deploying>.
+  behind HTTPS, with `/health` as health check; every push deploys again.
   Steps, the type of connection and its benefits are explained (in Spanish) in [DESPLIEGUE.md](DESPLIEGUE.md).
 
-Tests: `pytest tests/` (1052 tests: the two earlier assignments plus the new stages; includes a property test that
+Tests: `pytest tests/` (1086 tests: the two earlier assignments plus the new stages; includes a property test that
 checks both parsers against a brute-force enumeration of the language of random grammars, and a test that runs
 `cli/main.py` and checks that `POST /grammar/report` gives exactly the same output).
 
@@ -107,6 +106,10 @@ src/
 │   ├── grammar_controller.py       #   Items 1-2: /grammar/*
 │   ├── sdd_controller.py           #   Item 3: /sdd/*
 │   ├── pages_controller.py         #   /, /health, /api
+│   ├── practice_controller.py      #   extra: /practice/*
+│   ├── export_controller.py        #   extra: /export/latex/*
+│   ├── sessions_controller.py      #   extra: /sessions (SQLite)
+│   ├── docs_controller.py, openapi_spec.py   # extra: /docs (Swagger UI), /openapi.json
 │   └── http_utils.py               #   strict JSON body reading, uniform JSON errors
 ├── gateways/                       # orchestration; every internal error becomes a ValueError (HTTP 400)
 │   ├── automata_gateway.py, minimization_gateway.py
@@ -122,6 +125,9 @@ src/
 │   ├── cfg_sdd_presets.py          #   the SDDs, stored as data
 │   ├── safe_expr.py                #   safe expression language for semantic rules (no eval)
 │   ├── cfg_regular.py              #   right-linear grammar -> NFA (bridge to A1/A2)
+│   ├── practice.py                 #   extra: seeded practice exercises and their checkers
+│   ├── latex_export.py             #   extra: LaTeX tables of the report
+│   └── sessions_store.py           #   extra: SQLite store for saved work
 │   ├── cfg_protocol.py             #   input/output protocol of Section 2.2 (shared by cli/main.py and /grammar/report)
 │   └── cfg_export.py               #   CSV and LaTeX tables, DOT and SVG drawings (extra)
 ├── templates/                      # hub, grammar, sdd, minimization pages + shared rail
@@ -165,7 +171,7 @@ one-state NPDA that accepts by empty stack built from a grammar in Lecture 24.
 - The SDD is data: a grammar, an attribute table, and for each production a list of rules `X.attr = expression`. A rule's
   dependencies are derived from the references it contains. The evaluator never assumes a traversal order: it builds the
   dependency graph of the actual parse tree, orders it with Kahn's algorithm and evaluates. A cycle is reported with the
-  attributes that form it. Every loop over the tree is iterative, so deep inputs do not hit Python's recursion limit.
+  attributes that form it. Every loop over the tree is iterative, and `src/app.py` raises the recursion limit (and the thread stack) so that the JSON of a deep tree can be sent: 400 digits for the SDD and 2000 symbols for a grammar work through the web as they do on the command line.
 - Rules use a restricted expression language (arithmetic, comparisons, `and/or/not`, `a if c else b`, `max min abs int str len`)
   that is parsed and interpreted, never passed to `eval`, so an SDD can be edited from the browser safely.
 - Limits that keep the server responsive: 20,000 characters per grammar, 400 productions, 400 LR(0) states, 200 strings per
@@ -242,9 +248,22 @@ In PowerShell use `curl.exe` and put the JSON in a file (`-d "@body.json"`), bec
   border. The parse tree draws an ε leaf under every ε-production. **DOT** draws every transition as an edge, for
   Graphviz or the browser pages.
 
-## Generative AI tools
+## Extras beyond the assignment
 
-<Review this list, add every other use by the group (and for which parts), and keep only what is true.>
+| Feature | Where | Notes |
+|---|---|---|
+| Panic-mode error recovery (Aho Section 4.4.5) | `POST /grammar/parse` with `"recover": true`, LL(1) only | Synchronizing set = FOLLOW. Blank entry: skip the input symbol; synch entry: pop the nonterminal; terminal mismatch: pop it. At `$` with a blank entry the nonterminal is popped (our addition, so recovery always ends). No tree is built; the string is accepted only if no error was reported. |
+| Why it fails | `explanations` in `POST /grammar/ll1`, `/slr1` and `/grammar/analyze`; `cfg_explain.py`; shown in `/grammar/ui` | Plain-language reason for each LL(1) violation (Section 4.4.3) and SLR(1) conflict (Section 4.6.4): the productions and sets involved, the stack prefix that reaches the conflicting state, and the usual cause (left recursion, missing left factoring). It only reads the results of the algorithms; it never changes a verdict. |
+| Compare two regular grammars | `POST /grammar/compare`, tab in `/grammar/ui` | Right-linear grammars to NFA, DFA over the union alphabet, then `/minimize/compare`. Returns a shortest counterexample. |
+| Practice mode | `/practice/ui`, `GET /practice/new`, `POST /practice/check` | Generated exercises (FIRST/FOLLOW, LL(1) table, derivation, LR(0) closure). Same seed gives the same exercise, so the server stores nothing. |
+| LaTeX tables for the report | `POST /export/latex/grammar`, `/export/latex/sdd` (add `?download=1`) | Compiled with `pdflatex` in the tests when it is installed. |
+| Saved work | `/sessions` (GET, POST, GET/DELETE `/sessions/<id>`) | SQLite file `data/sessions.db`, or `SESSIONS_DB`. |
+| API documentation | `/docs` (Swagger UI 5, bundled, Apache-2.0), `/openapi.json` | A test checks that every route is described. |
+| Animated interface | every page | Aurora banners with a live line and an endpoint ticker, a typed derivation and counters on the home page, scroll reveals, tilting cards, confetti when a practice exercise is fully correct. All of it is in `static/app.css` and `static/fx.js`, uses no libraries, and is turned off when the system asks for reduced motion. |
+| Docker | `Dockerfile` (gunicorn) | **Not built or run by the authors** (no Docker daemon was available). Try `docker build -t fl . && docker run -p 5000:5000 fl`. |
+| CI | `.github/workflows/test.yml` | **Not run yet**; it runs pytest on Python 3.10-3.13. |
+
+## Generative AI tools
 
 - **Claude (Anthropic), in Claude Code**, October 2026, to review the finished project against the assignment and to
   write these changes, which the group reviewed: the natural order of DFA state names in `/convert` (`0-2-10`, not
@@ -252,4 +271,11 @@ In PowerShell use `curl.exe` and put the JSON in a file (`-d "@body.json"`), bec
   1000-state limit of `/convert` and `/simulate`; the three extra endpoints `/grammar/report`, `/grammar/export` and
   `/grammar/graph` (`cfg_protocol.py`, now shared with `cli/main.py`, and `cfg_export.py`) with their tests; the
   deployment files (`render.yaml`, gunicorn, `run_options` in `src/app.py`, `DESPLIEGUE.md`); and a CSS fix for phones.
-- <Other tools or uses, or "No other AI tools were used.">
+- **Claude (Anthropic), in Claude Code**, November 2026, to redesign the look of the web interface (`app.css`, `fx.js`,
+  the HTML templates: colours, type, layout and animations), to resolve the Git merge conflicts between the branches, to write the
+  plain-language explanations of LL(1) and SLR(1) failures (`cfg_explain.py`, an extra that only reads the results of the algorithms),
+  to audit the repository against the assignment and to fix the HTTP 500 that deep parse trees caused in the web layer.
+  No algorithm was changed: the group checked that the tests and the examples of the assignment give the same output.
+- **Generative AI assistant (Claude)**, throughout the project, as a study support: to clarify concepts of the books
+  (Aho et al., Kozen) and to ask how to turn those concepts into code. The group read the sections of the book, worked
+  the examples by hand and can explain and modify every part of the code.

@@ -7,6 +7,7 @@
 #   POST /grammar/analyze   everything above plus the decision of Section 2.2.2
 #   POST /grammar/parse     strings -> yes/no (+ parse tree, + step-by-step trace)
 #   POST /grammar/to-nfa    right-linear grammar -> NFA (input of /convert)
+#   POST /grammar/compare   do two right-linear grammars generate the same language?
 #   POST /grammar/report    plain text: exactly what cli/main.py prints (extra: other output formats)
 #   POST /grammar/export    FIRST/FOLLOW, LL(1) or SLR(1) table as CSV or LaTeX
 #   POST /grammar/graph     LR(0) automaton or parse tree as Graphviz DOT or SVG
@@ -117,7 +118,14 @@ def to_nfa():
 def parse():
     data = json_body(["grammar"])
     trace = _flag(data, "trace", False)
-    return jsonify(gateway.parse(data["grammar"], _inputs(data), data.get("parser", "auto"), trace))
+    recover = _flag(data, "recover", False)
+    return jsonify(gateway.parse(data["grammar"], _inputs(data), data.get("parser", "auto"), trace, recover))
+
+
+@grammar_bp.route("/grammar/compare", methods=["POST"])
+def compare():
+    data = json_body(["grammars"])
+    return jsonify(gateway.compare_regular(data["grammars"]))
 
 
 @grammar_bp.route("/grammar/report", methods=["POST"])

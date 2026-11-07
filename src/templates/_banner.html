@@ -1,0 +1,18 @@
+{# Page header with depth: coloured lights, a perspective floor, symbols floating on several layers and a 3D cube that follows the pointer.
+   Set before including: b_theme, b_title (may contain <em>), b_lede, b_rotate (list), b_extra (optional HTML). b_kicker and b_ticker are accepted and ignored. #}
+<header class="banner banner--{{ b_theme|default('hub') }}" data-banner>
+  <div class="b-fx" aria-hidden="true">
+    <span class="b-light l1"></span><span class="b-light l2"></span><span class="b-spot"></span>
+    <span class="b-grid"></span>
+    <div class="b-glyphs">{% for g, x, y, s, d in [('ε', 58, 14, 2.6, 26), ('δ', 70, 62, 2.0, 40), ('Σ', 46, 70, 1.6, 18), ('→', 84, 28, 2.2, 34), ('$', 90, 70, 1.8, 22), ('S', 30, 22, 1.4, 14), ('∗', 62, 40, 1.5, 30), ('{ }', 74, 80, 1.5, 16), ('λ', 52, 84, 1.7, 20), ('π', 36, 52, 1.3, 12), ('∅', 66, 20, 1.6, 28), ('∈', 94, 46, 1.5, 24)] %}<span style="left:{{ x }}%;top:{{ y }}%;--s:{{ s }}rem;--d:{{ d }};animation-delay:-{{ loop.index0 * 1.3 }}s">{{ g }}</span>{% endfor %}</div>
+    <div class="b-cube"><div class="cube-tilt"><div class="cube">
+      <i class="f f1">S</i><i class="f f2">ε</i><i class="f f3">δ</i><i class="f f4">Σ</i><i class="f f5">$</i><i class="f f6">→</i>
+    </div></div><span class="b-floor"></span></div>
+  </div>
+  <div class="b-body">
+    <h1>{{ b_title }}</h1>
+    <p class="b-lede">{{ b_lede }}</p>
+    {% if b_rotate %}<p class="b-live" aria-hidden="true"><span class="pulse"></span><span data-rotate="{{ b_rotate|join('|') }}">{{ b_rotate[0] }}</span></p>{% endif %}
+    {% if b_extra %}{{ b_extra }}{% endif %}
+  </div>
+</header>

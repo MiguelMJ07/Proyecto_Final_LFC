@@ -6,6 +6,7 @@
 <title>DFA Minimization</title>
 <script src="{{ url_for('static', filename='vendor/viz-standalone.js') }}"></script>
 <script src="{{ url_for('static', filename='common-nav.js') }}"></script>
+<script src="{{ url_for('static', filename='fx.js') }}" defer></script>
 <style>
   :root { --bg:#f7f7f5; --card:#fff; --ink:#1f2328; --muted:#6b7280; --line:#e5e7eb;
           --accent:#2563eb; --ok:#15803d; --bad:#b91c1c; --eq:#fde68a; }
@@ -49,15 +50,16 @@
   input[type=text] { font:14px ui-monospace, Menlo, monospace; padding:7px 10px; border:1px solid var(--line); border-radius:8px; min-width:220px; }
 </style>
 <link rel="stylesheet" href="{{ url_for('static', filename='app.css') }}">
-<style>main { max-width:1100px; } h1 { font-size:28px; }</style>
+
 </head>
 <body>
 {% include '_rail.html' %}
 <main>
-  <h1>DFA Minimization</h1>
-  <p class="sub">Kozen (1997), Lecture 14 &mdash; table-filling (marking) algorithm.
+  {% set b_theme = "min" %}{% set b_kicker = "Stages 1–2 · Earlier assignments" %}{% set b_title %}DFA <em>minimization</em>{% endset %}{% set b_lede %}Kozen (1997), Lecture 14 &mdash; table-filling (marking) algorithm.
      Assignment 2: <code>POST {{ url_for('minimization.minimize') }}</code>, <code>POST {{ url_for('minimization.compare') }}</code>.
-     Assignment 1: <code>POST {{ url_for('automata.convert') }}</code>, <code>POST {{ url_for('automata.simulate') }}</code>.</p>
+     Assignment 1: <code>POST {{ url_for('automata.convert') }}</code>, <code>POST {{ url_for('automata.simulate') }}</code>.{% endset %}
+{% set b_rotate = ['table-filling: mark pairs, then merge the rest', 'subset construction: NFA → DFA', 'two DFAs are equivalent iff their starts stay unmarked', 'a regular grammar can arrive here as an NFA'] %}{% set b_ticker = ['POST /convert', 'POST /simulate', 'POST /minimize', 'POST /minimize/compare', 'GET /minimize/ui'] %}{% set b_extra = "" %}
+{% include "_banner.html" %}
 
   <section class="card">
     <h2>Input (course format)</h2>
@@ -70,7 +72,7 @@
   </section>
 
   <section class="card" id="nfa">
-    <h2>Or start from an NFA (Assignment 1 → Assignment 2)</h2>
+    <h2>Start from an NFA</h2>
     <p class="muted">The NFA (JSON, as for <code>/convert</code>) is converted by the Assignment 1 endpoint and the resulting DFA
       is sent unchanged to <code>/minimize</code>. Preloaded: the NFA from the Assignment 1 statement.</p>
     <textarea id="nfaInput" spellcheck="false">{{ nfa_example }}</textarea>

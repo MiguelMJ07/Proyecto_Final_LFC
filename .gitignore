@@ -18,3 +18,6 @@ htmlcov/
 .idea/
 Thumbs.db
 .DS_Store
+
+# Saved sessions (SQLite)
+data/

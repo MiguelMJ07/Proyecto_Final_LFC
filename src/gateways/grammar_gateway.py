@@ -3,11 +3,13 @@
 import io
 
 from functions import cfg_export as export
+from functions.cfg_explain import explain_ll1, explain_slr1
 from functions.cfg_grammar import GrammarError, parse_grammar, sets_json
 from functions.cfg_ll1 import LL1
 from functions.cfg_protocol import line_reader, read_grammar, run_session, verdict
-from functions.cfg_regular import right_linear_to_nfa
+from functions.cfg_regular import regular_to_dfa, right_linear_to_nfa
 from functions.cfg_slr1 import SLR1, MAX_STATES
+from gateways.minimization_gateway import MinimizationGateway
 
 MAX_GRAMMAR_CHARS = 20000
 MAX_STRINGS = 200
@@ -58,13 +60,13 @@ class GrammarGateway:
         ll = LL1(g)
         return {"isLL1": ll.is_ll1, "violations": ll.violations, "tableConflicts": ll.conflicts,
                 "table": ll.table_json(), "tableLines": ll.table_lines(),
-                "leftRecursive": g.left_recursive(), "reference": BOOK["ll1"]}
+                "leftRecursive": g.left_recursive(), "explanations": explain_ll1(g, ll), "reference": BOOK["ll1"]}
 
     def slr1(self, text):
         g = self.load(text)
         slr = SLR1(g)
         out = {"isSLR1": slr.is_slr1, "conflicts": slr.conflicts, "numStates": len(slr.states),
-               "tooBig": slr.too_big, "reference": BOOK["slr1"]}
+               "tooBig": slr.too_big, "explanations": explain_slr1(g, slr), "reference": BOOK["slr1"]}
         if slr.too_big:
             out["message"] = f"The LR(0) collection exceeds {MAX_STATES} states; tables were not built."
             return out
@@ -80,28 +82,33 @@ class GrammarGateway:
         out = {"case": case, "message": message, "parsers": parsers, "isLL1": ll.is_ll1, "isSLR1": slr.is_slr1,
                "productions": g.productions_json(), "sets": sets_json(g), "leftRecursive": g.left_recursive(),
                "ll1": {"violations": ll.violations, "tableConflicts": ll.conflicts, "table": ll.table_json(),
-                       "tableLines": ll.table_lines()},
-               "slr1": {"conflicts": slr.conflicts, "numStates": len(slr.states), "tooBig": slr.too_big}}
+                       "tableLines": ll.table_lines(), "explanations": explain_ll1(g, ll)},
+               "slr1": {"conflicts": slr.conflicts, "numStates": len(slr.states), "tooBig": slr.too_big,
+                       "explanations": explain_slr1(g, slr)}}
         if not slr.too_big:
             out["slr1"].update(automaton=slr.automaton_json(), table=slr.table_json(), dot=slr.dot())
         return out
 
-    def parse(self, text, strings, parser="auto", trace=False):
+    def parse(self, text, strings, parser="auto", trace=False, recover=False):
         g = self.load(text)
         ll, slr = LL1(g), SLR1(g)
         case, message, parsers = verdict(ll, slr)
         parser = self._choose(parser, parsers, message)
         if parser is None:
             return {"case": case, "message": message, "results": []}
+        if recover and parser != "ll1":
+            raise ValueError("Panic-mode recovery (Section 4.4.5) is defined for the predictive (LL(1)) parser.")
         p = ll if parser == "ll1" else slr
         results = []
         for s, w in zip(strings, self._words(strings)):
-            r = p.parse(w, trace=trace)
+            r = p.parse_recover(w, trace=trace) if recover else p.parse(w, trace=trace)
             item = {"input": s, "accepted": r["accepted"], "answer": "yes" if r["accepted"] else "no"}
-            if r["accepted"]:
+            if r["accepted"] and r["tree"]:
                 item["tree"] = r["tree"]
-            else:
-                item["error"] = r["error"]
+            elif not r["accepted"]:
+                item["error"] = r["error"] or (r["errors"][0] if recover and r["errors"] else None)
+            if recover:
+                item["errors"] = r["errors"]
             if trace:
                 item["trace"] = r["trace"]
             results.append(item)
@@ -113,6 +120,22 @@ class GrammarGateway:
             return right_linear_to_nfa(g)
         except ValueError as e:
             raise ValueError(str(e))
+
+    def compare_regular(self, texts):
+        """Do two right-linear grammars generate the same language? grammar -> NFA -> DFA (Assignment 1) over the
+        union of both alphabets, then the equivalence test of Assignment 2."""
+        if not isinstance(texts, list) or len(texts) != 2:
+            raise ValueError("Field 'grammars' must be a list of exactly two grammars.")
+        gs = [self.load(t) for t in texts]
+        alphabet = sorted(set(gs[0].terminals) | set(gs[1].terminals))
+        try:
+            dfas = [regular_to_dfa(g, alphabet) for g in gs]
+        except ValueError as e:
+            raise ValueError(f"{e}")
+        result = MinimizationGateway().compare_json({"cases": dfas})
+        result["alphabet"] = alphabet
+        result["dfaStates"] = [len(d["dfaStates"]) for d in dfas]
+        return result
 
     # ------------------------------------------------------------ other output formats (extra)
     def report_text(self, body, sets=True, tables=False, trace=False):
