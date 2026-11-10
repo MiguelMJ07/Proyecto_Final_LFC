@@ -18,6 +18,10 @@ endpoint (or a few) and has its own page.
 - Miguel Muñoz
 - Juan José Sierra
 
+## Report
+
+The PDF report is `informe.pdf` (in Spanish), in the root directory. Its LaTeX source is `informe.tex`.
+
 ## Environment
 
 - OS: Windows 11 Pro (version 10.0.26300)
@@ -53,7 +57,7 @@ server (`GET /health`).
   behind HTTPS, with `/health` as health check; every push deploys again.
   Steps, the type of connection and its benefits are explained (in Spanish) in [DESPLIEGUE.md](DESPLIEGUE.md).
 
-Tests: `pytest tests/` (1086 tests: the two earlier assignments plus the new stages; includes a property test that
+Tests: `pytest tests/` (1091 tests: the two earlier assignments plus the new stages; includes a property test that
 checks both parsers against a brute-force enumeration of the language of random grammars, and a test that runs
 `cli/main.py` and checks that `POST /grammar/report` gives exactly the same output).
 
@@ -133,6 +137,7 @@ src/
 ├── templates/                      # hub, grammar, sdd, minimization pages + shared rail
 └── static/                         # app.css, common.js, vendor/viz-standalone.js
 cli/main.py, cli/sdd_cli.py         # stdin/stdout programs required by the assignment
+informe.pdf, informe.tex             # report (Item 4) and its LaTeX source
 examples/                           # sample inputs: CLI inputs (ex*.txt, sdd_*.txt) and request bodies (test_*.json/txt)
 tests/                              # pytest
 render.yaml, DESPLIEGUE.md          # deployment on Render and its explanation
@@ -155,9 +160,8 @@ Aho, Lam, Sethi, Ullman, *Compilers: Principles, Techniques, and Tools*, 2nd ed.
 | Dependency graph and topological evaluation order | Sections 5.2.1 and 5.2.2 | `build_graph`, `topological_order` |
 | S-attributed / L-attributed classification | Sections 5.2.3 and 5.2.4 | `SDD.classify` |
 
-Checked against the text: Section 4.4 (the attached `Cap4.pdf`, pages 192-232) for FIRST/FOLLOW, the LL(1) condition,
-Algorithms 4.31 and 4.34. Sections 4.5, 4.6 and 5.1-5.2 are not in that file; their numbering comes from the assignment, so
-**check the SLR(1) and SDD parts and their algorithm numbers against your copy of the book before citing them in the report.**
+Section 4.4 (FIRST/FOLLOW, the LL(1) condition, Algorithms 4.31 and 4.34) was checked against the text of the book.
+The section numbers of the SLR(1) and SDD parts are the ones the assignment cites.
 
 Connection with Kozen, *Automata and Computability* (the lectures provided): the grammars (21.1) and (21.2) of Lecture 21 are
 included as examples (`/grammar/ui`), and the stack discipline of the predictive parser is the deterministic form of the
@@ -175,7 +179,8 @@ one-state NPDA that accepts by empty stack built from a grammar in Lecture 24.
 - Rules use a restricted expression language (arithmetic, comparisons, `and/or/not`, `a if c else b`, `max min abs int str len`)
   that is parsed and interpreted, never passed to `eval`, so an SDD can be edited from the browser safely.
 - Limits that keep the server responsive: 20,000 characters per grammar, 400 productions, 400 LR(0) states, 200 strings per
-  request, 2,000 symbols per string (400 for SDD evaluation), 2 MB per body.
+  request, 2,000 symbols per string (400 for SDD evaluation), 2 MB per body. `cli/main.py` has none of these limits
+  (it must work for any grammar and any string); `tests/test_cli_limits.py` checks both behaviours.
 
 ## The SDDs
 

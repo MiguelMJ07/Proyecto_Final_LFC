@@ -11,8 +11,12 @@ AUG = "S'"
 
 
 class SLR1:
-    def __init__(self, g):
+    def __init__(self, g, max_states=MAX_STATES, max_input=MAX_INPUT):
+        """max_states limits the LR(0) collection and max_input the length of the strings to parse; None means
+        no limit (used by cli/main.py, which must work for any grammar). The web server keeps the defaults."""
         self.g = g
+        self.max_states = max_states
+        self.max_input = max_input
         self.aug = [(AUG, (g.start,))] + g.prods     # production 0 is S' -> S
         self.states = []                              # frozensets of items (production, dot)
         self.trans = {}                               # (state, symbol) -> state
@@ -55,7 +59,7 @@ class SLR1:
                 if not J:
                     continue
                 if J not in index:
-                    if len(self.states) >= MAX_STATES:
+                    if self.max_states is not None and len(self.states) >= self.max_states:
                         self.too_big = True
                         return
                     index[J] = len(self.states)
@@ -135,8 +139,8 @@ class SLR1:
     # ------------------------------------------------ LR parsing algorithm (4.6.3)
     def parse(self, w, trace=False):
         res = {"accepted": False, "tree": None, "trace": [], "error": None, "_root": None}
-        if len(w) > MAX_INPUT:
-            res["error"] = {"position": 0, "message": f"Input longer than {MAX_INPUT} symbols."}
+        if self.max_input is not None and len(w) > self.max_input:
+            res["error"] = {"position": 0, "message": f"Input longer than {self.max_input} symbols."}
             return res
         if END in w or EPS in w:
             res["error"] = {"position": 0, "message": "The input cannot contain the reserved symbols 'e' or '$'."}

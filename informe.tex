@@ -1,14 +1,13 @@
-% Informe del proyecto final. Las tablas, trazas y salidas de consola las genera el propio programa del grupo;
-% la prosa es un borrador que el grupo debe revisar. Busque "Pendiente" para ver lo que falta.
+% Informe del proyecto final. Las tablas, trazas y salidas de consola las genera el propio programa del grupo.
 \documentclass[11pt,a4paper]{article}
 \usepackage[utf8]{inputenc}
 \usepackage[T1]{fontenc}
 \usepackage{lmodern}
 \usepackage[spanish,es-noshorthands]{babel}
 \usepackage[margin=2.3cm]{geometry}
-\usepackage{booktabs,longtable,amsmath,xcolor}
+\usepackage{booktabs,longtable,amsmath,xcolor,tikz}
+\usetikzlibrary{arrows.meta}
 \setlength{\parindent}{0pt}\setlength{\parskip}{6pt}
-\newcommand{\pendiente}[1]{\par\noindent\fbox{\parbox{0.94\linewidth}{\textcolor{red}{\textbf{Pendiente:} #1}}}\par}
 
 \title{Proyecto final de Lenguajes formales\\[4pt]\large Analizadores LL(1) y SLR(1) y definiciones dirigidas por la sintaxis}
 \author{Miguel Muñoz \and Juan José Sierra}
@@ -20,7 +19,7 @@
 \section{Resumen de la entrega}
 Este informe documenta nuestra entrega del proyecto final. Implementamos el cálculo de FIRST y FOLLOW, un analizador LL(1) con tabla y pila, un analizador SLR(1) y el evaluador de una definición dirigida por la sintaxis (SDD) que usa el grafo de dependencias. Todo el código está en Python.
 
-Dos programas de consola siguen los formatos de entrada y salida del enunciado: \texttt{cli/main.py} para los Items 1 y 2, y \texttt{cli/sdd\_cli.py} para el Item 3. Un servidor Flask ofrece las mismas funciones en páginas web. No usamos generadores de parsers ni librerías que calculen conjuntos FIRST y FOLLOW, autómatas LR o tablas de análisis. Las instrucciones para instalar y ejecutar todo están en el \texttt{README.md}.
+Dos programas de consola siguen los formatos de entrada y salida del enunciado: \texttt{cli/main.py} para los Ítems 1 y 2, y \texttt{cli/sdd\_cli.py} para el Ítem 3. Un servidor Flask ofrece las mismas funciones en páginas web. No usamos generadores de parsers ni librerías que calculen conjuntos FIRST y FOLLOW, autómatas LR o tablas de análisis. Las instrucciones para instalar y ejecutar todo están en el \texttt{README.md}.
 
 \section{Secciones del libro y estructuras de datos}
 Seguimos a Aho, Lam, Sethi y Ullman, \emph{Compilers: Principles, Techniques, and Tools}, segunda edición. La tabla indica qué sección seguimos en cada parte, dónde está el código y qué estructura de datos usa.
@@ -43,9 +42,9 @@ Clasificación S y L-atribuida & 5.2.3, 5.2.4 & \texttt{SDD.classify} & Recorre 
 \bottomrule
 \end{longtable}
 
-\pendiente{Comprobar los números de algoritmo y de sección de las partes 4.5, 4.6 y 5 con la copia del libro. El README indica que solo la sección 4.4 se contrastó con el capítulo 4 adjunto.}
+Los números de sección son los que cita el enunciado para cada parte (secciones 4.4.2 a 4.4.4, 4.5, 4.6.2 a 4.6.4, 5.1 y 5.2).
 
-\section{Items 1 y 2: FIRST, FOLLOW y los dos analizadores}
+\section{Ítems 1 y 2: FIRST, FOLLOW y los dos analizadores}
 
 \subsection{La gramática}
 Elegimos una gramática propia que no aparece en el enunciado. Genera listas de identificadores separados por comas, con grupos entre corchetes. La letra \texttt{i} representa un identificador. Pertenecen al lenguaje, por ejemplo, \texttt{i}, \texttt{i,i} y \texttt{[i,i],i}.
@@ -67,7 +66,7 @@ R -> ,iR e
 \end{verbatim}
 
 \subsection{FIRST y FOLLOW}
-La tabla sale del programa con la opción \texttt{--sets}. $R$ puede derivar la cadena vacía, y por eso $\varepsilon$ está en FIRST$(R)$. FOLLOW$(R)$ es igual a FOLLOW$(L)$, porque $R$ está al final de las dos producciones de $L$. FOLLOW$(L)$ contiene \texttt{]}, que sigue a $L$ en $L\to\texttt{[}L\texttt{]}R$, y \texttt{\$}, que viene de $S\to L$.
+La tabla sale del programa con la opción \texttt{-{}-sets}. $R$ puede derivar la cadena vacía, y por eso $\varepsilon$ está en FIRST$(R)$. FOLLOW$(R)$ es igual a FOLLOW$(L)$, porque $R$ está al final de las dos producciones de $L$. FOLLOW$(L)$ contiene \texttt{]}, que sigue a $L$ en $L\to\texttt{[}L\texttt{]}R$, y \texttt{\$}, que viene de $S\to L$.
 
 \begin{table}[ht]
 \centering
@@ -141,7 +140,7 @@ $I_{11}$ & R $\to$ ,iR$\cdot$ & --- \\ \hline
 \caption{Producciones de la gramática aumentada (r$n$ reduce por la producción $n$)}
 \begin{tabular}{|c|c|}
 \hline
-$n$ & Production \\ \hline
+$n$ & Producción \\ \hline
 0 & S$'$ $\to$ S \\ \hline
 1 & S $\to$ L \\ \hline
 2 & L $\to$ iR \\ \hline
@@ -240,7 +239,7 @@ Paso & Pila & Entrada & Acción \\
 
 
 \subsection{Sesión de consola}
-Esta es una sesión completa de \texttt{cli/main.py --sets}, con el formato del enunciado. Primero la entrada:
+Esta es una sesión completa de \texttt{cli/main.py -{}-sets}, con el formato del enunciado. Primero la entrada:
 \begin{small}
 \begin{verbatim}
 3
@@ -281,7 +280,7 @@ Select a parser (T: for LL(1), B: for SLR(1), Q: quit):
 \end{verbatim}
 \end{small}
 
-\section{Item 3: definición dirigida por la sintaxis}
+\section{Ítem 3: definición dirigida por la sintaxis}
 
 \subsection{La gramática y el SDD}
 El SDD calcula la suma de verificación de Luhn de una cadena de dígitos. Contando desde el dígito de la derecha (posición $k=0$), cada dígito en posición impar se duplica, y si el doble pasa de 9 se le resta 9. La cadena es válida cuando la suma total es múltiplo de 10. Esta definición no aparece en el libro ni en el enunciado.
@@ -367,52 +366,127 @@ S#0 [sum=14, valid=False]
 \end{verbatim}
 \end{small}
 
-El grafo de dependencias tiene una arista por cada atributo que usa una regla, desde el atributo usado hacia el atributo que define. Esta es la lista completa de aristas:
-\begin{small}
-\begin{verbatim}
-  L#1.sum -> S#0.sum
-  L#1.sum -> S#0.valid
-  M#4.cnt -> D#2.k
-  M#4.cnt -> L#1.cnt
-  D#2.s -> L#1.sum
-  M#4.sum -> L#1.sum
-  1#3.lexval -> D#2.s
-  D#2.k -> D#2.s
-  L#5.cnt -> M#4.cnt
-  L#5.sum -> M#4.sum
-  M#8.cnt -> D#6.k
-  M#8.cnt -> L#5.cnt
-  D#6.s -> L#5.sum
-  M#8.sum -> L#5.sum
-  2#7.lexval -> D#6.s
-  D#6.k -> D#6.s
-  L#9.cnt -> M#8.cnt
-  L#9.sum -> M#8.sum
-  M#12.cnt -> D#10.k
-  M#12.cnt -> L#9.cnt
-  D#10.s -> L#9.sum
-  M#12.sum -> L#9.sum
-  3#11.lexval -> D#10.s
-  D#10.k -> D#10.s
-  L#13.cnt -> M#12.cnt
-  L#13.sum -> M#12.sum
-  M#16.cnt -> D#14.k
-  M#16.cnt -> L#13.cnt
-  D#14.s -> L#13.sum
-  M#16.sum -> L#13.sum
-  4#15.lexval -> D#14.s
-  D#14.k -> D#14.s
-\end{verbatim}
-\end{small}
+El grafo de dependencias tiene una arista por cada atributo que usa una regla, desde el atributo usado hacia el atributo que define. Para \texttt{1234} son 32 aristas y 26 atributos por evaluar (los cuatro \texttt{lexval} ya se conocen); la figura~\ref{fig:grafo} las dibuja todas. El programa imprime la lista completa con \texttt{python cli/sdd\_cli.py -{}-graph}.
 
 Un orden de evaluación válido (orden topológico, sección 5.2.2) es el que usa el programa:
 
-\texttt{M\#16.cnt}, \texttt{L\#13.cnt}, \texttt{M\#12.cnt}, \texttt{L\#9.cnt}, \texttt{M\#8.cnt}, \texttt{L\#5.cnt}, \texttt{M\#4.cnt}, \texttt{L\#1.cnt}, \texttt{D\#2.k}, \texttt{D\#2.s}, \texttt{D\#6.k}, \texttt{D\#6.s}, \texttt{D\#10.k}, \texttt{D\#10.s}, \texttt{D\#14.k}, \texttt{D\#14.s}, \texttt{M\#16.sum}, \texttt{L\#13.sum}, \texttt{M\#12.sum}, \texttt{L\#9.sum}, \texttt{M\#8.sum}, \texttt{L\#5.sum}, \texttt{M\#4.sum}, \texttt{L\#1.sum}, \texttt{S\#0.sum}, \texttt{S\#0.valid}
+\begin{enumerate}
+\item Los contadores, de abajo hacia arriba: \texttt{M\#16.cnt}, \texttt{L\#13.cnt}, \texttt{M\#12.cnt}, \texttt{L\#9.cnt}, \texttt{M\#8.cnt}, \texttt{L\#5.cnt}, \texttt{M\#4.cnt}, \texttt{L\#1.cnt}.
+\item La posición y el valor de cada dígito, de izquierda a derecha: \texttt{D\#2.k}, \texttt{D\#2.s}, \texttt{D\#6.k}, \texttt{D\#6.s}, \texttt{D\#10.k}, \texttt{D\#10.s}, \texttt{D\#14.k}, \texttt{D\#14.s}.
+\item Las sumas, de abajo hacia arriba, hasta el atributo principal: \texttt{M\#16.sum}, \texttt{L\#13.sum}, \texttt{M\#12.sum}, \texttt{L\#9.sum}, \texttt{M\#8.sum}, \texttt{L\#5.sum}, \texttt{M\#4.sum}, \texttt{L\#1.sum}, \texttt{S\#0.sum}, \texttt{S\#0.valid}.
+\end{enumerate}
 
 \medskip
 Resultado: \texttt{Main attribute S.valid = False}.
 
-\pendiente{El enunciado pide dibujar a mano el árbol anotado y el grafo de dependencias de una cadena con al menos cuatro terminales. Añadir los dibujos del grupo y comprobar que coinciden con la salida anterior.}
+La figura~\ref{fig:grafo} dibuja el árbol anotado de \texttt{1234} con su grafo de dependencias encima, como la figura 5.7 del libro. Los nodos del árbol son los símbolos, unidos por líneas grises. Cada recuadro es un vértice del grafo: un atributo con su valor. Las flechas azules van del atributo que se usa al atributo que se define. Se ve el orden de arriba: primero los \texttt{cnt} suben desde $M_{16}$, luego cada \texttt{M.cnt} baja a la izquierda hacia el \texttt{D.k} de su hermano, y al final las sumas \texttt{s} y \texttt{sum} suben hasta \texttt{S.valid}. Las hojas solo aportan su \texttt{lexval}, que ya se conoce.
+
+\begin{figure}[ht]
+\centering
+\begin{tikzpicture}[x=1cm,y=1cm,
+  sym/.style={font=\small\bfseries,inner sep=1pt},
+  att/.style={draw,rounded corners=2pt,font=\scriptsize\ttfamily,inner sep=1.5pt,fill=white},
+  dep/.style={-{Latex[length=1.6mm]},thick,blue!70!black},
+  tre/.style={gray!60,thin}]
+\node[sym] (n0) at (0.00,0.00) {S\textsubscript{\tiny\#0}};
+\node[sym] (n1) at (0.00,-1.60) {L\textsubscript{\tiny\#1}};
+\node[sym] (n2) at (-4.20,-3.20) {D\textsubscript{\tiny\#2}};
+\node[sym] (n3) at (-4.20,-4.40) {1\textsubscript{\tiny\#3}};
+\node[sym] (n4) at (0.00,-3.20) {M\textsubscript{\tiny\#4}};
+\node[sym] (n5) at (0.00,-4.80) {L\textsubscript{\tiny\#5}};
+\node[sym] (n6) at (-4.20,-6.40) {D\textsubscript{\tiny\#6}};
+\node[sym] (n7) at (-4.20,-7.60) {2\textsubscript{\tiny\#7}};
+\node[sym] (n8) at (0.00,-6.40) {M\textsubscript{\tiny\#8}};
+\node[sym] (n9) at (0.00,-8.00) {L\textsubscript{\tiny\#9}};
+\node[sym] (n10) at (-4.20,-9.60) {D\textsubscript{\tiny\#10}};
+\node[sym] (n11) at (-4.20,-10.80) {3\textsubscript{\tiny\#11}};
+\node[sym] (n12) at (0.00,-9.60) {M\textsubscript{\tiny\#12}};
+\node[sym] (n13) at (0.00,-11.20) {L\textsubscript{\tiny\#13}};
+\node[sym] (n14) at (-4.20,-12.80) {D\textsubscript{\tiny\#14}};
+\node[sym] (n15) at (-4.20,-14.00) {4\textsubscript{\tiny\#15}};
+\node[sym] (n16) at (0.00,-12.80) {M\textsubscript{\tiny\#16}};
+\draw[tre] (n2) -- (n3);
+\draw[tre] (n6) -- (n7);
+\draw[tre] (n10) -- (n11);
+\draw[tre] (n14) -- (n15);
+\draw[tre] (n13) -- (n14);
+\draw[tre] (n13) -- (n16);
+\draw[tre] (n12) -- (n13);
+\draw[tre] (n9) -- (n10);
+\draw[tre] (n9) -- (n12);
+\draw[tre] (n8) -- (n9);
+\draw[tre] (n5) -- (n6);
+\draw[tre] (n5) -- (n8);
+\draw[tre] (n4) -- (n5);
+\draw[tre] (n1) -- (n2);
+\draw[tre] (n1) -- (n4);
+\draw[tre] (n0) -- (n1);
+\node[att] (a0sum) at (-1.35,0.00) {sum=14};
+\node[att] (a0valid) at (1.35,0.00) {valid=false};
+\node[att] (a1cnt) at (-1.35,-1.60) {cnt=4};
+\node[att] (a1sum) at (1.35,-1.60) {sum=14};
+\node[att] (a2k) at (-5.35,-3.20) {k=3};
+\node[att] (a2s) at (-3.05,-3.20) {s=2};
+\node[att] (a3lexval) at (-3.10,-4.40) {lexval=1};
+\node[att] (a4cnt) at (-1.35,-3.20) {cnt=3};
+\node[att] (a4sum) at (1.35,-3.20) {sum=12};
+\node[att] (a5cnt) at (-1.35,-4.80) {cnt=3};
+\node[att] (a5sum) at (1.35,-4.80) {sum=12};
+\node[att] (a6k) at (-5.35,-6.40) {k=2};
+\node[att] (a6s) at (-3.05,-6.40) {s=2};
+\node[att] (a7lexval) at (-3.10,-7.60) {lexval=2};
+\node[att] (a8cnt) at (-1.35,-6.40) {cnt=2};
+\node[att] (a8sum) at (1.35,-6.40) {sum=10};
+\node[att] (a9cnt) at (-1.35,-8.00) {cnt=2};
+\node[att] (a9sum) at (1.35,-8.00) {sum=10};
+\node[att] (a10k) at (-5.35,-9.60) {k=1};
+\node[att] (a10s) at (-3.05,-9.60) {s=6};
+\node[att] (a11lexval) at (-3.10,-10.80) {lexval=3};
+\node[att] (a12cnt) at (-1.35,-9.60) {cnt=1};
+\node[att] (a12sum) at (1.35,-9.60) {sum=4};
+\node[att] (a13cnt) at (-1.35,-11.20) {cnt=1};
+\node[att] (a13sum) at (1.35,-11.20) {sum=4};
+\node[att] (a14k) at (-5.35,-12.80) {k=0};
+\node[att] (a14s) at (-3.05,-12.80) {s=4};
+\node[att] (a15lexval) at (-3.10,-14.00) {lexval=4};
+\node[att] (a16cnt) at (-1.35,-12.80) {cnt=0};
+\node[att] (a16sum) at (1.35,-12.80) {sum=0};
+\draw[dep] (a1sum) to (a0sum);
+\draw[dep] (a1sum) to (a0valid);
+\draw[dep] (a4cnt) to[bend left=22] (a2k);
+\draw[dep] (a4cnt) to (a1cnt);
+\draw[dep] (a2s) to (a1sum);
+\draw[dep] (a4sum) to (a1sum);
+\draw[dep] (a3lexval) to (a2s);
+\draw[dep] (a2k) to[bend left=40] (a2s);
+\draw[dep] (a5cnt) to (a4cnt);
+\draw[dep] (a5sum) to (a4sum);
+\draw[dep] (a8cnt) to[bend left=22] (a6k);
+\draw[dep] (a8cnt) to (a5cnt);
+\draw[dep] (a6s) to (a5sum);
+\draw[dep] (a8sum) to (a5sum);
+\draw[dep] (a7lexval) to (a6s);
+\draw[dep] (a6k) to[bend left=40] (a6s);
+\draw[dep] (a9cnt) to (a8cnt);
+\draw[dep] (a9sum) to (a8sum);
+\draw[dep] (a12cnt) to[bend left=22] (a10k);
+\draw[dep] (a12cnt) to (a9cnt);
+\draw[dep] (a10s) to (a9sum);
+\draw[dep] (a12sum) to (a9sum);
+\draw[dep] (a11lexval) to (a10s);
+\draw[dep] (a10k) to[bend left=40] (a10s);
+\draw[dep] (a13cnt) to (a12cnt);
+\draw[dep] (a13sum) to (a12sum);
+\draw[dep] (a16cnt) to[bend left=22] (a14k);
+\draw[dep] (a16cnt) to (a13cnt);
+\draw[dep] (a14s) to (a13sum);
+\draw[dep] (a16sum) to (a13sum);
+\draw[dep] (a15lexval) to (a14s);
+\draw[dep] (a14k) to[bend left=40] (a14s);
+\end{tikzpicture}
+\caption{Árbol anotado de \texttt{1234} y su grafo de dependencias (secciones 5.1.2 y 5.2.1)}
+\label{fig:grafo}
+\end{figure}
 
 \subsection{Paso 4: clasificación}
 El SDD no es S-atribuido ni L-atribuido.
@@ -438,14 +512,14 @@ Cadena & Resultado & Comentario \\
 \texttt{4539578763621486} & válida & 16 dígitos \\
 \texttt{12a} & no pertenece al lenguaje & contiene un símbolo que no es dígito \\
 \texttt{0}$^{40}$ & válida & 40 ceros \\
-\texttt{1}$^{400}$ & válida & 400 unos: la recursión más profunda que acepta el programa \\
+\texttt{1}$^{400}$ & válida & 400 unos: recursión profunda (es también el límite de la interfaz web) \\
 \bottomrule
 \end{tabular}
 \caption{Pruebas del evaluador con la suma de Luhn (\texttt{S.valid})}
 \end{table}
 
 
-Para comprobar la detección de ciclos cambiamos temporalmente una regla. En $L\to DM$ la regla \texttt{D.k = M.cnt} pasa a ser \texttt{D.k = M.cnt + D.s}. Ahora \texttt{D.k} depende de \texttt{D.s}, que ya dependía de \texttt{D.k}. El evaluador detecta el ciclo y se detiene. Esta es la salida con la cadena \texttt{18} y la opción \texttt{--circular}:
+Para comprobar la detección de ciclos cambiamos temporalmente una regla. En $L\to DM$ la regla \texttt{D.k = M.cnt} pasa a ser \texttt{D.k = M.cnt + D.s}. Ahora \texttt{D.k} depende de \texttt{D.s}, que ya dependía de \texttt{D.k}. El evaluador detecta el ciclo y se detiene. Esta es la salida con la cadena \texttt{18} y la opción \texttt{-{}-circular}:
 \begin{small}
 \begin{verbatim}
 The SDD is circular. Cycle found:
@@ -459,7 +533,16 @@ The SDD is circular. Cycle found:
 \item \textbf{Problemas de la revisión final.} Al revisar el proyecto terminado contra el enunciado encontramos tres fallos. Los nombres de los estados del DFA en \texttt{/convert} salían en orden alfabético (\texttt{0-10-2}) en lugar del orden natural (\texttt{0-2-10}). El servidor devolvía un error 500 cuando la colección LR(0) tenía más de 400 estados. Y \texttt{/convert} y \texttt{/simulate} necesitaban comprobar mejor su entrada. Corregimos el orden, el error 500, y añadimos validaciones de entrada y un límite de 1000 estados.
 \end{itemize}
 
-\pendiente{Añadir los problemas que el grupo encontró mientras programaba los algoritmos (por ejemplo, con las producciones $\varepsilon$ en FIRST y FOLLOW, con los conflictos de la tabla SLR(1) o con el orden de evaluación) y cómo los resolvió. El enunciado pide también los que no se pudieron resolver.}
+Al programar los algoritmos, estos fueron los puntos más delicados y la forma en que los resolvimos:
+\begin{itemize}
+\item \textbf{FIRST de una cadena con símbolos anulables.} FIRST$(X_1X_2\cdots X_n)$ no es solo FIRST$(X_1)$: si $X_1$ deriva $\varepsilon$ hay que seguir con $X_2$, y así sucesivamente, y $\varepsilon$ solo entra al conjunto si todos los $X_i$ la derivan. Lo implementamos en una función que recorre la cadena y se detiene en el primer símbolo no anulable. Como los conjuntos de los no terminales dependen unos de otros, aplicamos las reglas en rondas hasta que ningún conjunto crece.
+\item \textbf{Regla 3 de FOLLOW.} Es fácil pasar FOLLOW$(A)$ a $B$ solo cuando $B$ está al final de $A\to\alpha B$, pero la regla también aplica a $A\to\alpha B\beta$ cuando $\beta$ deriva $\varepsilon$. En el ejemplo 2 del enunciado ($S\to AB$, $B\to bBc \mid \varepsilon$) esto es lo que pone \$ en FOLLOW$(A)$. Por eso calculamos FIRST$(\beta)$ y aplicamos la regla 3 cuando contiene $\varepsilon$.
+\item \textbf{Conflictos SLR(1) que se ocultaban.} Si cada celda de ACTION guarda una sola acción, una acción nueva reemplaza a la anterior y el conflicto desaparece sin aviso. Por eso cada celda guarda la lista de todas sus acciones, y la gramática es SLR(1) solo si ninguna lista tiene más de una. Hacemos lo mismo con la tabla LL(1), aunque la decisión LL(1) usa la condición de la sección 4.4.3.
+\item \textbf{Atributos de las hojas en el orden topológico.} Si las aristas que salen de un \texttt{lexval} cuentan como dependencias pendientes en el algoritmo de Kahn, los atributos que las usan nunca quedan listos. Los \texttt{lexval} ya se conocen, así que esas aristas no cuentan en el grado de entrada.
+\item \textbf{Símbolos repetidos en una producción.} En una regla como $L\to DM$ basta el nombre del símbolo, pero en una producción con un símbolo repetido el nombre es ambiguo. Las reglas pueden usar \texttt{\$0} para la cabeza y \texttt{\$1}, \texttt{\$2}, \dots{} para el cuerpo, y el programa rechaza un nombre ambiguo.
+\end{itemize}
+
+No pudimos probar el \texttt{Dockerfile} ni la integración continua (\texttt{.github/workflows}), porque no teníamos un servicio de Docker disponible. Son extras que no pide el enunciado.
 
 \section{Verificación y reproducción}
 El proyecto tiene una suite de pruebas con \texttt{pytest}. Incluye una prueba de propiedades que compara los dos analizadores con una enumeración exhaustiva del lenguaje de gramáticas aleatorias. Los pasos para ejecutar las pruebas, los programas de consola y el servidor están en el \texttt{README.md}. Los comandos principales son:

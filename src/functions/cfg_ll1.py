@@ -49,8 +49,11 @@ def check_ll1_conditions(g):
 
 
 class LL1:
-    def __init__(self, g):
+    def __init__(self, g, max_input=MAX_INPUT):
+        """max_input limits the length of the strings to parse; None means no limit (used by cli/main.py,
+        which must accept any string). The web server keeps the default."""
         self.g = g
+        self.max_input = max_input
         self.table = {}                          # (A, a) -> [production indices]
         for idx, (A, body) in enumerate(g.prods):          # Algorithm 4.31
             fb = g.first_of(body)
@@ -95,8 +98,8 @@ class LL1:
         parser expands nonterminals (the 'additional code' the book mentions)."""
         g = self.g
         res = {"accepted": False, "tree": None, "trace": [], "error": None, "_root": None}
-        if len(w) > MAX_INPUT:
-            res["error"] = {"position": 0, "message": f"Input longer than {MAX_INPUT} symbols."}
+        if self.max_input is not None and len(w) > self.max_input:
+            res["error"] = {"position": 0, "message": f"Input longer than {self.max_input} symbols."}
             return res
         if END in w or EPS in w:
             # 'e' is epsilon in grammars, so it can never be an input terminal (empty string is given as "")
@@ -159,7 +162,7 @@ class LL1:
         Returns accepted (True only if no error was found), the list of errors and the trace. No tree is built."""
         g = self.g
         res = {"accepted": False, "tree": None, "trace": [], "errors": [], "error": None, "recovered": True}
-        if len(w) > MAX_INPUT or END in w or EPS in w:
+        if (self.max_input is not None and len(w) > self.max_input) or END in w or EPS in w:
             res["error"] = {"position": 0, "message": "Invalid input (too long, or contains the reserved symbols 'e' or '$')."}
             return res
         w = list(w) + [END]

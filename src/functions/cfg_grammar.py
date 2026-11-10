@@ -32,7 +32,8 @@ class Grammar:
     MAX_NONTERMINALS = 26
     MAX_PRODUCTIONS = 400
 
-    def __init__(self, lines):
+    def __init__(self, lines, max_productions=MAX_PRODUCTIONS):
+        """max_productions=None means no limit (used by cli/main.py); the web server keeps the default."""
         self.prods = []
         self.start = "S"
         heads = []
@@ -59,8 +60,8 @@ class Grammar:
                             f"Symbol {ch!r} is reserved ('e' is epsilon, '$' is the end marker) "
                             f"and cannot be used inside alternative {alt!r}", ln)
                 self.prods.append((head, tuple(alt)))
-        if len(self.prods) > self.MAX_PRODUCTIONS:
-            raise GrammarError(f"Too many productions (limit {self.MAX_PRODUCTIONS}).")
+        if max_productions is not None and len(self.prods) > max_productions:
+            raise GrammarError(f"Too many productions (limit {max_productions}).")
         if "S" not in heads:
             raise GrammarError("The start symbol S has no production")
         used = {x for _, b in self.prods for x in b if is_nt(x)}
@@ -159,7 +160,7 @@ class Grammar:
                 for i, (h, b) in enumerate(self.prods)]
 
 
-def parse_grammar(text):
+def parse_grammar(text, max_productions=Grammar.MAX_PRODUCTIONS):
     """Reads a grammar in the format of Section 2.2 of the assignment:
     first line n, then n lines `A -> alt1 alt2 ...`."""
     if not isinstance(text, str):
@@ -178,7 +179,7 @@ def parse_grammar(text):
     body = [ln for ln in lines[1:] if ln.strip()]
     if len(body) != n:
         raise GrammarError(f"Expected {n} production lines but found {len(body)}.")
-    return Grammar(body)
+    return Grammar(body, max_productions)
 
 
 def fmt_set(s):

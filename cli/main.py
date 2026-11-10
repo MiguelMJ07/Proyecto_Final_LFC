@@ -26,11 +26,11 @@ def main():
     args = sys.argv[1:]
     read_line = line_reader(sys.stdin.readline)
     try:
-        g = read_grammar(read_line)
+        g = read_grammar(read_line, max_productions=None)      # no size limits on the command line
     except ValueError as e:      # GrammarError is a ValueError
         print(f"Invalid grammar: {e}")
         return 1
-    run_session(g, LL1(g), SLR1(g), read_line, write,
+    run_session(g, LL1(g, max_input=None), SLR1(g, max_states=None, max_input=None), read_line, write,
                 sets="--sets" in args, tables="--tables" in args, trace="--trace" in args)
     return 0
 

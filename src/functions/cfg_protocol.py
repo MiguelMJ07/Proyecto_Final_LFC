@@ -31,7 +31,7 @@ def line_reader(readline):
     return read
 
 
-def read_grammar(read_line):
+def read_grammar(read_line, max_productions=Grammar.MAX_PRODUCTIONS):
     """The grammar part of the input: a line with n, then n production lines."""
     first = read_line()
     try:
@@ -40,7 +40,7 @@ def read_grammar(read_line):
         raise GrammarError(f"The first line must be the number of nonterminals, got {first!r}", 1) from None
     if not 0 < n <= Grammar.MAX_NONTERMINALS:     # checked before reading n lines
         raise GrammarError(f"The number of nonterminals must be between 1 and {Grammar.MAX_NONTERMINALS}.", 1)
-    return parse_grammar(str(n) + "\n" + "\n".join(read_line() or "" for _ in range(n)))
+    return parse_grammar(str(n) + "\n" + "\n".join(read_line() or "" for _ in range(n)), max_productions)
 
 
 def table_lines(ll, slr):
